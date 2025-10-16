@@ -1,0 +1,55 @@
+{
+  "name": "brease-next",
+  "version": "1.0.0",
+  "description": "Brease CMS integration for Next.js - React components, hooks, and utilities for seamless content management",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run build:cjs && npm run build:esm && npm run fix:esm",
+    "build:cjs": "tsc",
+    "build:esm": "tsc --module esnext --outDir dist/esm --declaration false --declarationMap false --sourceMap false",
+    "fix:esm": "node scripts/fix-esm.cjs",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "nextjs",
+    "typescript",
+    "package",
+    "brease",
+    "cms",
+    "react",
+    "headless-cms"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^24.8.0",
+    "@types/react": "^19",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "next": ">=13.0.0",
+    "react": ">=18.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
