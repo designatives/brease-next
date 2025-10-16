@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import type { BreaseMedia } from '../types';
+import type { BreaseMedia } from '../types.js';
 
 export function BreaseImage({
   breaseImage,

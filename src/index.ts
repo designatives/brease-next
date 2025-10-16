@@ -7,7 +7,7 @@ export type {
   BreaseConfig,
   BreaseCollectionEntry,
   BreaseRedirect,
-} from './types';
+} from './types.js';
 
 export {
   fetchSite,
@@ -20,10 +20,10 @@ export {
   generateBreasePageParams,
   generateBreaseCollectionParams,
   generateBreasePageMetadata,
-} from './client';
+} from './api.js';
 
-export { default as BreasePage } from './components/page';
-export { BreaseImage } from './components/image';
+export { default as BreasePage } from './components/page.js';
+export { BreaseImage } from './components/image.js';
 
-export { default as BreaseContext, type BreaseContextConfig } from './context';
-export { useBrease } from './hooks';
+export { default as BreaseContext, type BreaseContextConfig } from './context.js';
+export { useBrease } from './hooks.js';

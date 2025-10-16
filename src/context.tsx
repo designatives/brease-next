@@ -1,7 +1,7 @@
-import BreaseHook from './hooks';
 import { ReactNode } from 'react';
-import { fetchNavigation, fetchCollectionById } from './client';
-import type { BreaseNavigation, BreaseCollectionEntry } from './types';
+import { BreaseClientProvider } from './client-provider.js';
+import { fetchNavigation, fetchCollectionById } from './api.js';
+import type { BreaseNavigation, BreaseCollectionEntry } from './types.js';
 
 export interface BreaseContextConfig {
   navigations: Array<{ key: string; id: string }>;
@@ -13,6 +13,27 @@ interface BreaseContextProps {
   config: BreaseContextConfig;
 }
 
+/**
+ * Server Component that fetches Brease data and provides it to client components.
+ * Can be used directly in server components like layout.tsx.
+ *
+ * @example
+ * ```tsx
+ * // app/layout.tsx (Server Component)
+ * export default async function RootLayout({ children }) {
+ *   return (
+ *     <BreaseContext
+ *       config={{
+ *         navigations: [{ key: 'header', id: 'nav-id' }],
+ *         collections: [{ key: 'posts', id: 'collection-id' }]
+ *       }}
+ *     >
+ *       {children}
+ *     </BreaseContext>
+ *   );
+ * }
+ * ```
+ */
 export default async function BreaseContext({ children, config }: BreaseContextProps) {
   const navigationResults = await Promise.all(
     config.navigations.map(async (nav) => ({
@@ -51,5 +72,5 @@ export default async function BreaseContext({ children, config }: BreaseContextP
     collections,
   };
 
-  return <BreaseHook brease={breaseData}>{children}</BreaseHook>;
+  return <BreaseClientProvider brease={breaseData}>{children}</BreaseClientProvider>;
 }

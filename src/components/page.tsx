@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import type { BreasePage as BreasePageType, BreaseSection } from '../types';
+import type { BreasePage as BreasePageType, BreaseSection } from '../types.js';
 
 interface BreasePageProps {
   page: BreasePageType;
