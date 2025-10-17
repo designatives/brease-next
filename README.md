@@ -3,6 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/brease-next.svg)](https://www.npmjs.com/package/brease-next)
 [![npm downloads](https://img.shields.io/npm/dm/brease-next.svg)](https://www.npmjs.com/package/brease-next)
 [![license](https://img.shields.io/npm/l/brease-next.svg)](https://github.com/designatives/brease-next/blob/main/LICENSE)
+[![CI](https://github.com/designatives/brease-next/actions/workflows/ci.yml/badge.svg)](https://github.com/designatives/brease-next/actions/workflows/ci.yml)
 
 Official Next.js integration for Brease CMS - React components, hooks, and utilities for seamless headless CMS content management.
 
@@ -333,6 +334,60 @@ import type {
   BreaseResponse
 } from 'brease-next';
 ```
+
+## Publishing & Releases
+
+This package uses automated GitHub Actions workflows for publishing to npm and creating releases.
+
+### Setup Requirements
+
+Before creating your first release, you need to add an npm token to your GitHub repository:
+
+1. Generate an npm token with **Automation** or **Publish** permissions at [npmjs.com/settings/tokens](https://www.npmjs.com/settings/tokens)
+2. Add it as a secret named `NPM_TOKEN` in your GitHub repository settings:
+   - Go to **Settings** → **Secrets and variables** → **Actions**
+   - Click **New repository secret**
+   - Name: `NPM_TOKEN`
+   - Value: Your npm token
+
+### Creating a Release
+
+To publish a new version to npm and create a GitHub release:
+
+1. **Update the version** in `package.json`:
+   ```bash
+   npm version patch  # For bug fixes (0.1.0 → 0.1.1)
+   npm version minor  # For new features (0.1.0 → 0.2.0)
+   npm version major  # For breaking changes (0.1.0 → 1.0.0)
+   ```
+
+2. **Update CHANGELOG.md** with the new version and changes
+
+3. **Commit the changes**:
+   ```bash
+   git add .
+   git commit -m "chore: release v0.1.1"
+   ```
+
+4. **Push with tags**:
+   ```bash
+   git push && git push --tags
+   ```
+
+The GitHub Actions workflow will automatically:
+- ✅ Run code quality checks (ESLint, Prettier)
+- ✅ Build the package
+- ✅ Publish to npm with provenance attestation
+- ✅ Create a GitHub release with changelog content
+
+### Continuous Integration
+
+Every push to `main` and all pull requests automatically run:
+- ESLint checks
+- Prettier formatting verification
+- Build verification on Node.js 16, 18, and 20
+
+The CI status is visible in the badge at the top of this README.
 
 ## License
 
