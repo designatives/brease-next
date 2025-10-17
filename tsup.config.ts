@@ -15,7 +15,7 @@ export default defineConfig({
       js: format === 'cjs' ? '.cjs' : '.js',
     };
   },
-  external: ['react', 'react-dom', 'next', /^next\//, /^react\//],
+  external: ['react', 'react-dom', 'next'],
   esbuildOptions(options) {
     options.jsx = 'automatic';
   },

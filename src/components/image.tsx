@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import Image from 'next/image.js';
 import type { BreaseMedia } from '../types.js';
 
 export function BreaseImage({
