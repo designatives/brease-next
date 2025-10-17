@@ -22,6 +22,9 @@ npm-debug.log*
 *.swo
 .claude/
 
+# Linting
+.eslintcache
+
 # Testing
 coverage/
 

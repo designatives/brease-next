@@ -52,19 +52,19 @@ export interface BreaseNavigation {
 }
 
 export interface BreasePage {
-  name: string | null,
-  slug: string | null,
-  uuid: string | null,
-  parent: null,
-  indexing: boolean,
-  variables: string | null,
-  customCode: string | null,
-  openGraphUrl: string | null,
-  openGraphType: string | null,
-  openGraphImage: string | null,
-  openGraphTitle: string | null,
-  metaDescription: string | null,
-  openGraphDescription: string | null,
+  name: string | null;
+  slug: string | null;
+  uuid: string | null;
+  parent: null;
+  indexing: boolean;
+  variables: string | null;
+  customCode: string | null;
+  openGraphUrl: string | null;
+  openGraphType: string | null;
+  openGraphImage: string | null;
+  openGraphTitle: string | null;
+  metaDescription: string | null;
+  openGraphDescription: string | null;
   sections: BreaseSection[];
 }
 
@@ -97,6 +97,7 @@ export interface BreaseConfig {
   baseUrl: string;
   token: string;
   env: string;
+  locale: string;
   revalidationTime: number;
 }
 

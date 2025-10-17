@@ -1,5 +1,9 @@
 # brease-next
 
+[![npm version](https://img.shields.io/npm/v/brease-next.svg)](https://www.npmjs.com/package/brease-next)
+[![npm downloads](https://img.shields.io/npm/dm/brease-next.svg)](https://www.npmjs.com/package/brease-next)
+[![license](https://img.shields.io/npm/l/brease-next.svg)](https://github.com/brease/brease-next/blob/main/LICENSE)
+
 Official Next.js integration for Brease CMS - React components, hooks, and utilities for seamless headless CMS content management.
 
 ## Installation
@@ -22,6 +26,7 @@ Set up the following environment variables in your `.env.local` file:
 BREASE_BASE_URL=https://your-brease-api.com
 BREASE_TOKEN=your_api_token
 BREASE_ENV=your_environment_id
+BREASE_LOCALE=en  # Optional: Locale for content (defaults to 'en')
 BREASE_REVALIDATION_TIME=30  # Optional: Cache revalidation time in seconds
 ```
 
@@ -182,17 +187,65 @@ export async function getRedirects() {
 }
 ```
 
-## API Reference
+## Error Handling
 
-### Fetch Functions
-
-All fetch functions return a `BreaseResponse<T>` type with the following structure:
+All fetch functions return a `BreaseResponse<T>` type that includes both success and error states:
 
 ```typescript
 type BreaseResponse<T> =
   | { success: true; data: T; status: number }
   | { success: false; error: string; status: number; endpoint?: string };
 ```
+
+### Handling Errors
+
+Always check the `success` property before accessing data:
+
+```typescript
+const result = await fetchPage('about');
+
+if (!result.success) {
+  // Handle error case
+  console.error('Failed to fetch page:', result.error);
+  console.error('Status code:', result.status);
+  console.error('Endpoint:', result.endpoint);
+
+  // Show error UI to user
+  return <ErrorPage message={result.error} />;
+}
+
+// Safe to access data now
+const page = result.data;
+```
+
+### Common Error Scenarios
+
+- **Missing Environment Variables**: Ensure all required env vars are set (`BREASE_BASE_URL`, `BREASE_TOKEN`, `BREASE_ENV`)
+- **Network Errors**: Check network connectivity and API availability
+- **404 Not Found**: The requested resource (page, collection, etc.) doesn't exist
+- **401 Unauthorized**: Invalid or expired `BREASE_TOKEN`
+- **Rate Limiting**: Too many requests to the API
+
+## API Reference
+
+### Configuration
+
+#### `validateBreaseConfig()`
+Validates and returns the Brease configuration from environment variables. Useful for debugging configuration issues.
+
+```typescript
+import { validateBreaseConfig } from 'brease-next';
+
+try {
+  const config = validateBreaseConfig();
+  console.log('Configuration is valid:', config);
+} catch (error) {
+  console.error('Configuration error:', error.message);
+  // Handle missing or invalid environment variables
+}
+```
+
+### Fetch Functions
 
 #### `fetchSite()`
 Fetches site-level information.

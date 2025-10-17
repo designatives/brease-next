@@ -6,17 +6,31 @@ import type {
   BreaseCollectionEntry,
   BreaseNavigation,
   BreaseRedirect,
-  BreaseResponse, BreaseSite,
+  BreaseResponse,
+  BreaseSite,
 } from './types.js';
 
 /**
  * Validates and returns the Brease configuration from environment variables.
  * Throws an error if required configuration is missing.
+ *
+ * @throws Error if required environment variables are not set
+ * @returns BreaseConfig object with validated configuration
+ * @example
+ * ```typescript
+ * try {
+ *   const config = validateBreaseConfig();
+ *   console.log('Config is valid:', config);
+ * } catch (error) {
+ *   console.error('Configuration error:', error.message);
+ * }
+ * ```
  */
-function validateConfig(): BreaseConfig {
+export function validateBreaseConfig(): BreaseConfig {
   const baseUrl = process.env.BREASE_BASE_URL;
   const token = process.env.BREASE_TOKEN;
   const env = process.env.BREASE_ENV;
+  const locale = process.env.BREASE_LOCALE || 'en';
   const revalidationTime = parseInt(process.env.BREASE_REVALIDATION_TIME || '30');
 
   const missingVars: string[] = [];
@@ -35,11 +49,11 @@ function validateConfig(): BreaseConfig {
     baseUrl: baseUrl!,
     token: token!,
     env: env!,
+    locale,
     revalidationTime,
   };
 }
 
-// Cached config instance (lazy-loaded on first use)
 let cachedConfig: BreaseConfig | null = null;
 
 /**
@@ -48,7 +62,7 @@ let cachedConfig: BreaseConfig | null = null;
  */
 function getConfig(): BreaseConfig {
   if (!cachedConfig) {
-    cachedConfig = validateConfig();
+    cachedConfig = validateBreaseConfig();
   }
   return cachedConfig;
 }
@@ -60,12 +74,12 @@ const getSiteUrl = (): string => {
 
 const getPageUrl = (pageSlug: string): string => {
   const config = getConfig();
-  return `${config.baseUrl}/environments/${config.env}/page?locale=en&slug=${pageSlug}`;
+  return `${config.baseUrl}/environments/${config.env}/page?locale=${config.locale}&slug=${pageSlug}`;
 };
 
 const getNavigationUrl = (navigationId: string): string => {
   const config = getConfig();
-  return `${config.baseUrl}/environments/${config.env}/navigations/${navigationId}?locale=en`;
+  return `${config.baseUrl}/environments/${config.env}/navigations/${navigationId}?locale=${config.locale}`;
 };
 
 const getRedirectsUrl = (): string => {
@@ -229,7 +243,7 @@ export async function fetchPage(pageSlug: string): Promise<BreaseResponse<Brease
  */
 export async function fetchAllPages(): Promise<BreaseResponse<{ slug: string }[]>> {
   const config = getConfig();
-  const endpoint = `${config.baseUrl}/environments/${config.env}/pages?locale=en`;
+  const endpoint = `${config.baseUrl}/environments/${config.env}/pages?locale=${config.locale}`;
   return handleBreaseFetch(endpoint, (json) => (json.data.pages as { slug: string }[]) || []);
 }
 
@@ -254,7 +268,7 @@ export async function fetchCollectionById(
   collectionId: string
 ): Promise<BreaseResponse<BreaseCollection>> {
   const config = getConfig();
-  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}?locale=en`;
+  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}?locale=${config.locale}`;
   return handleBreaseFetch(endpoint, (json) => json.data.collection as BreaseCollection);
 }
 
@@ -278,7 +292,7 @@ export async function fetchEntryBySlug(
   entrySlug: string
 ): Promise<BreaseResponse<BreaseCollectionEntry>> {
   const config = getConfig();
-  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}/entry?locale=en&slug=${entrySlug}`;
+  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}/entry?locale=${config.locale}&slug=${entrySlug}`;
   return handleBreaseFetch(endpoint, (json) => json.data.entry as BreaseCollectionEntry);
 }
 
@@ -299,7 +313,10 @@ export async function fetchEntryBySlug(
 export async function fetchNavigation(
   navigationId: string
 ): Promise<BreaseResponse<BreaseNavigation>> {
-  return handleBreaseFetch(getNavigationUrl(navigationId), (json) => json.data.navigation as BreaseNavigation);
+  return handleBreaseFetch(
+    getNavigationUrl(navigationId),
+    (json) => json.data.navigation as BreaseNavigation
+  );
 }
 
 /**

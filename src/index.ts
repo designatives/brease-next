@@ -24,6 +24,7 @@ export {
   generateBreasePageParams,
   generateBreaseCollectionParams,
   generateBreasePageMetadata,
+  validateBreaseConfig,
 } from './api.js';
 
 export { default as BreasePage } from './components/page.js';

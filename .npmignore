@@ -1,11 +1,15 @@
 # Source files
 src/
 tsconfig.json
+tsup.config.ts
 
 # Development files
 .gitignore
 *.test.ts
 *.test.js
+.eslintrc.json
+.prettierrc
+.prettierignore
 
 # IDE
 .vscode/

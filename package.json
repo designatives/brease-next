@@ -1,6 +1,6 @@
 {
   "name": "brease-next",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Brease CMS integration for Next.js - React components, hooks, and utilities for seamless content management",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -24,6 +24,10 @@
     "build": "tsup",
     "clean": "rm -rf dist/",
     "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -35,11 +39,29 @@
     "react",
     "headless-cms"
   ],
-  "author": "",
+  "author": "Designatives",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/designatives/brease-next.git"
+  },
+  "homepage": "https://github.com/designatives/brease-next#readme",
+  "bugs": {
+    "url": "https://github.com/designatives/brease-next/issues"
+  },
   "devDependencies": {
+    "@eslint/compat": "^1.4.0",
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.37.0",
     "@types/node": "^24.8.0",
     "@types/react": "^19",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "globals": "^16.4.0",
+    "prettier": "^3.3.0",
     "tsup": "^8.5.0",
     "typescript": "^5.0.0"
   },

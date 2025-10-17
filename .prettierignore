@@ -1,0 +1,10 @@
+# Build output
+dist/
+node_modules/
+
+# Generated files
+*.d.ts
+*.d.mts
+
+# Package files
+package-lock.json

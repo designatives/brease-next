@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, ReactNode, useContext } from 'react';
-import type {BreaseCollection, BreaseNavigation} from './types.js';
+import type { BreaseCollection, BreaseNavigation } from './types.js';
 
 export interface BreaseContextData {
   navigations: Record<string, BreaseNavigation>;
