@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/brease-next.svg)](https://www.npmjs.com/package/brease-next)
 [![npm downloads](https://img.shields.io/npm/dm/brease-next.svg)](https://www.npmjs.com/package/brease-next)
-[![license](https://img.shields.io/npm/l/brease-next.svg)](https://github.com/brease/brease-next/blob/main/LICENSE)
+[![license](https://img.shields.io/npm/l/brease-next.svg)](https://github.com/designatives/brease-next/blob/main/LICENSE)
 
 Official Next.js integration for Brease CMS - React components, hooks, and utilities for seamless headless CMS content management.
 
