@@ -3,12 +3,14 @@ export interface BreaseSection {
   page_section_uuid: string;
   type: string;
   uuid: string;
-  elements: Record<string, BreaseMedia>;
+  elements: SectionElementProps;
 }
 
+export type SectionElementProps = Record<string, unknown>;
+
 export interface BreaseMedia {
-  alt: string;
-  duration: number;
+  alt: string | null;
+  duration: number | null;
   extension: string;
   height: number;
   mimeGroup: string;
@@ -19,11 +21,11 @@ export interface BreaseMedia {
   thumbnail: string;
   uuid: string;
   width: number;
-  variants: BreaseMediaVariant[];
+  variants: Record<string, BreaseMediaVariant>;
 }
 
 export interface BreaseMediaVariant {
-  alt: string;
+  alt: string | null;
   extension: string;
   height: number;
   mimeType: string;
@@ -33,18 +35,20 @@ export interface BreaseMediaVariant {
   width: number;
 }
 
+export interface BreaseNavigationItem {
+  uuid: string;
+  value: string;
+  type: string;
+  url: string | null;
+  target: BreasePage | null;
+  children: BreaseNavigationItem[];
+}
+
 export interface BreaseNavigation {
   name: string;
   uuid: string;
-  description?: string;
-  items: {
-    value: string;
-    target?: {
-      slug: string;
-    };
-    type: string;
-    url?: string;
-  }[];
+  description: string | null;
+  items: BreaseNavigationItem[];
 }
 
 export interface BreasePage {
@@ -65,10 +69,15 @@ export interface BreasePage {
 }
 
 export interface BreaseSite {
-  uuid: string,
-  name: string,
-  domain: string,
-  sitemapIndexing: boolean,
+  uuid: string;
+  name: string;
+  title: string | null;
+  domain: string;
+  published: boolean;
+  status: string;
+  hasMultiLocale: boolean | null;
+  sitemapIndexing: boolean;
+  customCode: string | null;
 }
 
 export type BreaseResponse<T> =
@@ -92,12 +101,23 @@ export interface BreaseConfig {
 }
 
 export interface BreaseCollectionEntry {
+  uuid: string;
+  name: string;
   slug: string;
   elements: Record<string, unknown>;
 }
 
+export interface BreaseCollection {
+  uuid: string;
+  name: string;
+  description: string | null;
+  status: string;
+  entries: BreaseCollectionEntry[];
+}
+
 export interface BreaseRedirect {
+  uuid: string;
   source: string;
   destination: string;
-  permanent: '301' | '302' | '307' | '308';
+  type: '301' | '302' | '307' | '308';
 }

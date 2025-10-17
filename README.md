@@ -71,8 +71,15 @@ export async function generateStaticParams() {
 ```typescript
 import { fetchCollectionById, fetchEntryBySlug } from 'brease-next';
 
-// Fetch all entries in a collection
+// Fetch a collection with all its entries
 const collectionResult = await fetchCollectionById('collection-id');
+if (collectionResult.success) {
+  const collection = collectionResult.data;
+  console.log(collection.name, collection.status);
+  collection.entries.forEach(entry => {
+    // Access each entry
+  });
+}
 
 // Fetch a specific entry by slug
 const entryResult = await fetchEntryBySlug('collection-id', 'entry-slug');
@@ -197,7 +204,7 @@ Fetches a specific page by slug.
 Fetches all available pages (useful for static generation).
 
 #### `fetchCollectionById(collectionId: string)`
-Fetches all entries in a collection.
+Fetches a collection by its ID, including metadata and all entries.
 
 #### `fetchEntryBySlug(collectionId: string, entrySlug: string)`
 Fetches a specific collection entry by slug.
@@ -240,7 +247,7 @@ Returns:
 ```typescript
 {
   navigations: Record<string, BreaseNavigation>;
-  collections: Record<string, BreaseCollectionEntry[]>;
+  collections: Record<string, BreaseCollection>;
 }
 ```
 

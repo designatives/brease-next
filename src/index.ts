@@ -1,10 +1,14 @@
 export type {
   BreaseSection,
+  SectionElementProps,
   BreaseMedia,
   BreaseMediaVariant,
   BreaseNavigation,
+  BreaseNavigationItem,
   BreasePage as BreasePageType,
+  BreaseSite,
   BreaseConfig,
+  BreaseCollection,
   BreaseCollectionEntry,
   BreaseRedirect,
 } from './types.js';

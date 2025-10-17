@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type {
   BreaseConfig,
   BreasePage,
+  BreaseCollection,
   BreaseCollectionEntry,
   BreaseNavigation,
   BreaseRedirect,
@@ -172,7 +173,7 @@ export async function generateBreaseCollectionParams(collectionId: string) {
     return [];
   }
 
-  return result.data
+  return result.data.entries
     .filter((entry) => entry.slug && entry.slug !== '/')
     .map((entry) => ({
       slug: entry.slug.replace(/^\//, ''),
@@ -233,28 +234,28 @@ export async function fetchAllPages(): Promise<BreaseResponse<{ slug: string }[]
 }
 
 /**
- * Fetches all entries from a specific collection by its ID.
+ * Fetches a collection by its ID, including metadata and all entries.
  *
  * @param collectionId - The ID of the collection to fetch
- * @returns Promise resolving to BreaseResponse containing array of collection entries
+ * @returns Promise resolving to BreaseResponse containing the complete collection with entries
  * @example
  * ```typescript
  * const result = await fetchCollectionById('blog-posts');
  * if (result.success) {
- *   const entries = result.data;
- *   // Render entries
+ *   const collection = result.data;
+ *   console.log(collection.name, collection.status);
+ *   collection.entries.forEach(entry => {
+ *     // Render each entry
+ *   });
  * }
  * ```
  */
 export async function fetchCollectionById(
   collectionId: string
-): Promise<BreaseResponse<BreaseCollectionEntry[]>> {
+): Promise<BreaseResponse<BreaseCollection>> {
   const config = getConfig();
   const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}?locale=en`;
-  return handleBreaseFetch(endpoint, (json) => {
-    const collection = json.data.collection as { entries?: BreaseCollectionEntry[] };
-    return collection.entries || [];
-  });
+  return handleBreaseFetch(endpoint, (json) => json.data.collection as BreaseCollection);
 }
 
 /**

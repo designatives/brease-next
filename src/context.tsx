@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { BreaseClientProvider } from './client-provider.js';
 import { fetchNavigation, fetchCollectionById } from './api.js';
-import type { BreaseNavigation, BreaseCollectionEntry } from './types.js';
+import type { BreaseNavigation, BreaseCollection } from './types.js';
 
 export interface BreaseContextConfig {
   navigations: Array<{ key: string; id: string }>;
@@ -58,7 +58,7 @@ export default async function BreaseContext({ children, config }: BreaseContextP
     }
   });
 
-  const collections: Record<string, BreaseCollectionEntry[]> = {};
+  const collections: Record<string, BreaseCollection> = {};
   collectionResults.forEach(({ key, result }) => {
     if (result.success) {
       collections[key] = result.data;
