@@ -9,14 +9,14 @@ interface BreasePageProps {
 export default function BreasePage({ page, sectionMap }: BreasePageProps) {
   return (
     <>
-      {page.sections.map((section: BreaseSection) => {
+      {page.sections.map((section: BreaseSection, index: number) => {
         const SectionComponent = sectionMap[section.type];
         if (!SectionComponent) {
           console.warn(`No component found for section type: ${section.type}`);
           return null;
         }
         return createElement(SectionComponent, {
-          key: section.uuid,
+          key: `${section.uuid}-${index}`,
           ...section.elements,
         });
       })}
