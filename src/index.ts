@@ -10,7 +10,6 @@ export type {
   BreaseConfig,
   BreaseCollection,
   BreaseCollectionEntry,
-  BreaseRedirect,
 } from './types.js';
 
 export {
@@ -20,7 +19,6 @@ export {
   fetchCollectionById,
   fetchEntryBySlug,
   fetchNavigation,
-  fetchRedirects,
   generateBreasePageParams,
   generateBreaseCollectionParams,
   generateBreasePageMetadata,
