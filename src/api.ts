@@ -330,7 +330,7 @@ export async function fetchNavigation(
  *   const redirects = result.data.map(r => ({
  *     source: r.source,
  *     destination: r.destination,
- *     permanent: r.permanent === '301'
+ *     permanent: r.type === '301'
  *   }));
  * }
  * ```
