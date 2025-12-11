@@ -4,6 +4,7 @@ import type { BreaseMedia } from '../types.js';
 type BreaseImageProps = Omit<ImageProps, 'src'> & {
   breaseImage: BreaseMedia;
   variant?: 'sm' | 'md' | 'lg' | 'xl' | 'hd' | 'original';
+  alt?: string;
 };
 
 export function BreaseImage({
