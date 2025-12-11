@@ -63,6 +63,7 @@ export interface BreasePage {
   openGraphType: string | null;
   openGraphImage: string | null;
   openGraphTitle: string | null;
+  metaTitle: string | null;
   metaDescription: string | null;
   openGraphDescription: string | null;
   sections: BreaseSection[];

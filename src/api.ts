@@ -363,7 +363,7 @@ export async function generateBreasePageMetadata(pageSlug: string): Promise<Meta
   const page = result.data;
 
   const metadata: Metadata = {
-    title: page.name || undefined,
+    title: page.metaTitle || page.name || undefined,
   };
 
   if (page.metaDescription) {
@@ -378,7 +378,7 @@ export async function generateBreasePageMetadata(pageSlug: string): Promise<Meta
   }
 
   metadata.openGraph = {
-    title: page.openGraphTitle || page.name || undefined,
+    title: page.openGraphTitle || page.metaTitle || page.name || undefined,
     description: page.openGraphDescription || page.metaDescription || undefined,
     type: (page.openGraphType as 'website' | 'article') || 'website',
     url: page.openGraphUrl || undefined,
