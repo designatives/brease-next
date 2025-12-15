@@ -72,14 +72,16 @@ const getSiteUrl = (): string => {
   return `${config.baseUrl}`;
 };
 
-const getPageUrl = (pageSlug: string): string => {
+const getPageUrl = (pageSlug: string, locale?: string): string => {
   const config = getConfig();
-  return `${config.baseUrl}/environments/${config.env}/page?locale=${config.locale}&slug=${pageSlug}`;
+  const effectiveLocale = locale || config.locale;
+  return `${config.baseUrl}/environments/${config.env}/page?locale=${effectiveLocale}&slug=${pageSlug}`;
 };
 
-const getNavigationUrl = (navigationId: string): string => {
+const getNavigationUrl = (navigationId: string, locale?: string): string => {
   const config = getConfig();
-  return `${config.baseUrl}/environments/${config.env}/navigations/${navigationId}?locale=${config.locale}`;
+  const effectiveLocale = locale || config.locale;
+  return `${config.baseUrl}/environments/${config.env}/navigations/${navigationId}?locale=${effectiveLocale}`;
 };
 
 const getRedirectsUrl = (): string => {
@@ -143,7 +145,9 @@ async function handleBreaseFetch<T>(
  * Generates static params for Next.js static site generation.
  * Fetches all pages and returns an array of route parameters.
  *
- * @returns Array of page parameters with subpageSlug property
+ * @param slugKey - The key to use for the slug property (defaults to 'subpageSlug')
+ * @param locale - Optional locale override (defaults to config locale)
+ * @returns Array of page parameters with slug property
  * @example
  * ```typescript
  * export async function generateStaticParams() {
@@ -151,8 +155,11 @@ async function handleBreaseFetch<T>(
  * }
  * ```
  */
-export async function generateBreasePageParams() {
-  const result = await fetchAllPages();
+export async function generateBreasePageParams(
+  slugKey: string = 'subpageSlug',
+  locale?: string
+): Promise<Record<string, string>[]> {
+  const result = await fetchAllPages(locale);
 
   if (!result.success) {
     console.error('Failed to fetch pages for static generation:', result.error);
@@ -162,7 +169,7 @@ export async function generateBreasePageParams() {
   return result.data
     .filter((page) => page.slug && page.slug !== '/')
     .map((page) => ({
-      subpageSlug: page.slug.replace(/^\//, ''),
+      [slugKey]: page.slug.replace(/^\//, ''),
     }));
 }
 
@@ -171,6 +178,7 @@ export async function generateBreasePageParams() {
  * Fetches all entries from a collection and returns an array of route parameters.
  *
  * @param collectionId - The ID of the collection to fetch entries from
+ * @param locale - Optional locale override (defaults to config locale)
  * @returns Array of entry parameters with slug property
  * @example
  * ```typescript
@@ -179,8 +187,8 @@ export async function generateBreasePageParams() {
  * }
  * ```
  */
-export async function generateBreaseCollectionParams(collectionId: string) {
-  const result = await fetchCollectionById(collectionId);
+export async function generateBreaseCollectionParams(collectionId: string, locale?: string) {
+  const result = await fetchCollectionById(collectionId, locale);
 
   if (!result.success) {
     console.error('Failed to fetch entries for static generation:', result.error);
@@ -214,6 +222,7 @@ export async function fetchSite(): Promise<BreaseResponse<BreaseSite>> {
  * Fetches a specific page by its slug from Brease CMS.
  *
  * @param pageSlug - The slug of the page to fetch
+ * @param locale - Optional locale override (defaults to config locale)
  * @returns Promise resolving to BreaseResponse containing page data with sections
  * @example
  * ```typescript
@@ -224,14 +233,18 @@ export async function fetchSite(): Promise<BreaseResponse<BreaseSite>> {
  * }
  * ```
  */
-export async function fetchPage(pageSlug: string): Promise<BreaseResponse<BreasePage>> {
-  return handleBreaseFetch(getPageUrl(pageSlug), (json) => json.data.page as BreasePage);
+export async function fetchPage(
+  pageSlug: string,
+  locale?: string
+): Promise<BreaseResponse<BreasePage>> {
+  return handleBreaseFetch(getPageUrl(pageSlug, locale), (json) => json.data.page as BreasePage);
 }
 
 /**
  * Fetches all available pages from Brease CMS.
  * Useful for static site generation.
  *
+ * @param locale - Optional locale override (defaults to config locale)
  * @returns Promise resolving to BreaseResponse containing array of page slugs
  * @example
  * ```typescript
@@ -241,9 +254,10 @@ export async function fetchPage(pageSlug: string): Promise<BreaseResponse<Brease
  * }
  * ```
  */
-export async function fetchAllPages(): Promise<BreaseResponse<{ slug: string }[]>> {
+export async function fetchAllPages(locale?: string): Promise<BreaseResponse<{ slug: string }[]>> {
   const config = getConfig();
-  const endpoint = `${config.baseUrl}/environments/${config.env}/pages?locale=${config.locale}`;
+  const effectiveLocale = locale || config.locale;
+  const endpoint = `${config.baseUrl}/environments/${config.env}/pages?locale=${effectiveLocale}`;
   return handleBreaseFetch(endpoint, (json) => (json.data.pages as { slug: string }[]) || []);
 }
 
@@ -251,6 +265,7 @@ export async function fetchAllPages(): Promise<BreaseResponse<{ slug: string }[]
  * Fetches a collection by its ID, including metadata and all entries.
  *
  * @param collectionId - The ID of the collection to fetch
+ * @param locale - Optional locale override (defaults to config locale)
  * @returns Promise resolving to BreaseResponse containing the complete collection with entries
  * @example
  * ```typescript
@@ -265,10 +280,12 @@ export async function fetchAllPages(): Promise<BreaseResponse<{ slug: string }[]
  * ```
  */
 export async function fetchCollectionById(
-  collectionId: string
+  collectionId: string,
+  locale?: string
 ): Promise<BreaseResponse<BreaseCollection>> {
   const config = getConfig();
-  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}?locale=${config.locale}`;
+  const effectiveLocale = locale || config.locale;
+  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}?locale=${effectiveLocale}`;
   return handleBreaseFetch(endpoint, (json) => json.data.collection as BreaseCollection);
 }
 
@@ -277,6 +294,7 @@ export async function fetchCollectionById(
  *
  * @param collectionId - The ID of the collection
  * @param entrySlug - The slug of the entry to fetch
+ * @param locale - Optional locale override (defaults to config locale)
  * @returns Promise resolving to BreaseResponse containing the collection entry
  * @example
  * ```typescript
@@ -289,10 +307,12 @@ export async function fetchCollectionById(
  */
 export async function fetchEntryBySlug(
   collectionId: string,
-  entrySlug: string
+  entrySlug: string,
+  locale?: string
 ): Promise<BreaseResponse<BreaseCollectionEntry>> {
   const config = getConfig();
-  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}/entry?locale=${config.locale}&slug=${entrySlug}`;
+  const effectiveLocale = locale || config.locale;
+  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}/entry?locale=${effectiveLocale}&slug=${entrySlug}`;
   return handleBreaseFetch(endpoint, (json) => json.data.entry as BreaseCollectionEntry);
 }
 
@@ -300,6 +320,7 @@ export async function fetchEntryBySlug(
  * Fetches navigation data by its ID.
  *
  * @param navigationId - The ID of the navigation to fetch
+ * @param locale - Optional locale override (defaults to config locale)
  * @returns Promise resolving to BreaseResponse containing navigation data
  * @example
  * ```typescript
@@ -311,10 +332,11 @@ export async function fetchEntryBySlug(
  * ```
  */
 export async function fetchNavigation(
-  navigationId: string
+  navigationId: string,
+  locale?: string
 ): Promise<BreaseResponse<BreaseNavigation>> {
   return handleBreaseFetch(
-    getNavigationUrl(navigationId),
+    getNavigationUrl(navigationId, locale),
     (json) => json.data.navigation as BreaseNavigation
   );
 }
@@ -344,6 +366,7 @@ export async function fetchRedirects(): Promise<BreaseResponse<BreaseRedirect[]>
  * Includes SEO metadata, Open Graph tags, and robots directives.
  *
  * @param pageSlug - The slug of the page to generate metadata for
+ * @param locale - Optional locale override (defaults to config locale)
  * @returns Promise resolving to Next.js Metadata object
  * @example
  * ```typescript
@@ -352,8 +375,11 @@ export async function fetchRedirects(): Promise<BreaseResponse<BreaseRedirect[]>
  * }
  * ```
  */
-export async function generateBreasePageMetadata(pageSlug: string): Promise<Metadata> {
-  const result = await fetchPage(pageSlug);
+export async function generateBreasePageMetadata(
+  pageSlug: string,
+  locale?: string
+): Promise<Metadata> {
+  const result = await fetchPage(pageSlug, locale);
 
   if (!result.success) {
     console.error('Failed to fetch page data for metadata:', result);

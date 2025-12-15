@@ -11,6 +11,7 @@ export interface BreaseContextConfig {
 interface BreaseContextProps {
   children: ReactNode;
   config: BreaseContextConfig;
+  locale?: string;
 }
 
 /**
@@ -19,14 +20,16 @@ interface BreaseContextProps {
  *
  * @example
  * ```tsx
- * // app/layout.tsx (Server Component)
- * export default async function RootLayout({ children }) {
+ * // app/[locale]/layout.tsx (Server Component)
+ * export default async function LocaleLayout({ children, params }) {
+ *   const { locale } = await params;
  *   return (
  *     <BreaseContext
  *       config={{
  *         navigations: [{ key: 'header', id: 'nav-id' }],
  *         collections: [{ key: 'posts', id: 'collection-id' }]
  *       }}
+ *       locale={locale}
  *     >
  *       {children}
  *     </BreaseContext>
@@ -34,18 +37,18 @@ interface BreaseContextProps {
  * }
  * ```
  */
-export default async function BreaseContext({ children, config }: BreaseContextProps) {
+export default async function BreaseContext({ children, config, locale }: BreaseContextProps) {
   const navigationResults = await Promise.all(
     config.navigations.map(async (nav) => ({
       key: nav.key,
-      result: await fetchNavigation(nav.id),
+      result: await fetchNavigation(nav.id, locale),
     }))
   );
 
   const collectionResults = await Promise.all(
     config.collections.map(async (col) => ({
       key: col.key,
-      result: await fetchCollectionById(col.id),
+      result: await fetchCollectionById(col.id, locale),
     }))
   );
 
