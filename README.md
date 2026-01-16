@@ -15,7 +15,7 @@ npm install brease-next
 
 ## Requirements
 
-- Node.js >= 16.0.0
+- Node.js >= 18.0.0
 - Next.js >= 13.0.0
 - React >= 18.0.0
 
