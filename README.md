@@ -144,15 +144,7 @@ export function Navigation() {
 
 #### Turbopack Compatibility
 
-When using Next.js with Turbopack, you can alternatively import client hooks from the dedicated client entry point:
-
-```typescript
-'use client';
-
-import { useBrease } from 'brease-next/client';
-```
-
-This explicit import path ensures proper `'use client'` directive handling with Turbopack's module resolution.
+This package is fully compatible with Next.js Turbopack. The build process automatically preserves `'use client'` directives in bundled output, so `BreaseContext` works correctly in server component layouts.
 
 ### Rendering Images
 
@@ -308,10 +300,6 @@ Props:
 
 #### `useBrease()`
 Access navigation and collection data in client components. Must be used within a `BreaseContext`.
-
-Available from:
-- `import { useBrease } from 'brease-next'`
-- `import { useBrease } from 'brease-next/client'` (recommended for Turbopack)
 
 Returns:
 ```typescript
