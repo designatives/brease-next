@@ -1,14 +1,14 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/**/*.{ts,tsx}'],
+  entry: ['src/index.ts', 'src/server.ts'],
   format: ['cjs', 'esm'],
   dts: true,
   sourcemap: true,
   clean: true,
-  bundle: false,
+  bundle: true,
   splitting: false,
-  treeshake: false,
+  treeshake: true,
   outDir: 'dist',
   outExtension({ format }) {
     return {
