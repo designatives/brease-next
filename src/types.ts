@@ -55,18 +55,30 @@ export interface BreasePage {
   name: string | null;
   slug: string | null;
   uuid: string | null;
-  parent: null;
   indexing: boolean;
   variables: string | null;
   customCode: string | null;
-  openGraphUrl: string | null;
-  openGraphType: string | null;
-  openGraphImage: string | null;
-  openGraphTitle: string | null;
+  structuredData: object[];
+  openGraph: {
+    url: string | null;
+    type: string | null;
+    image: string | null;
+    title: string | null;
+    description: string | null;
+  };
+  twitterCard: {
+    site: string | null;
+    type: string | null;
+    image: string | null;
+    title: string | null;
+    creator: string | null;
+    description: string | null;
+  };
+  canonicalUrl: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
-  openGraphDescription: string | null;
   sections: BreaseSection[];
+  additionalFields: object[] | null;
 }
 
 export interface BreaseSite {

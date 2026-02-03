@@ -33,6 +33,8 @@
   "scripts": {
     "build": "tsup",
     "clean": "rm -rf dist/",
+    "pack:local": "npm run build && npm pack",
+    "serve:local": "npm run pack:local && npx --yes serve . -p 4040",
     "dev": "tsup --watch",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
