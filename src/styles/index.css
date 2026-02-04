@@ -1,0 +1,111 @@
+/* Base element styling */
+.brease-preview-hidden {
+  display: none;
+}
+
+.brease-section {
+  position: relative;
+  max-height: unset;
+  overflow: unset;
+}
+
+.brease-preview-overlay {
+  position: absolute;
+  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: transparent;
+  z-index: 99998;
+}
+
+.brease-section-hide {
+  max-height: 48px;
+  overflow: hidden;
+}
+
+html[data-brease-preview=true] *[data-brease-hidden=true] {
+  display: none;
+}
+
+html[data-brease-preview=true] *[data-brease-invisible=true] {
+  visibility: hidden;
+}
+
+/* Section Toolbar */
+.brease-section-toolbar {
+  background-color: rgba(245, 246, 248, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid #E2E4EA;
+  height: 46px;
+  padding: 8px 16px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  z-index: 99999;
+}
+
+.brease-section-toolbar .brease-section-title {
+  font-weight: 500;
+  color: #282B32;
+}
+
+.brease-section-toolbar .brease-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Edit Button */
+.brease-section-toolbar .brease-edit-button {
+  background-color: #07080A;
+  border: none;
+  border-radius: 44px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #FFFFFF;
+  cursor: pointer;
+  height: 30px;
+  align-items: center;
+  display: flex;
+}
+
+/* Toggle Section Button */
+.brease-section-toolbar .brease-toggle-section-button {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E4EA;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.brease-section-toolbar .brease-toggle-section-button svg {
+  transform: rotate(180deg);
+  transition: 300ms transform ease-in-out;
+  pointer-events: none;
+}
+
+.brease-section-toolbar .brease-toggle-section-button[data-open="false"] svg {
+  transform: rotate(0deg);
+}
+
+/* Section transition effects */
+.brease-section-toolbar+section {
+  opacity: 1;
+  transition: 500ms opacity ease-in-out, 500ms margin ease-in-out;
+}
+
+.brease-section-toolbar:hover+section {
+  opacity: 0.6;
+}

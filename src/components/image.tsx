@@ -21,6 +21,14 @@ type BreaseImageProps = Omit<ImageProps, 'src' | 'alt' | 'srcSet' | 'sizes'> & {
   sizes?: string;
 };
 
+/**
+ * Renders a Brease media image using Next.js Image. Supports responsive srcSet from
+ * Brease variants when no variant is specified, or a single variant when one is chosen.
+ *
+ * @param breaseImage - Brease media object (path, variants, alt, etc.)
+ * @param variant - Optional size variant (sm, md, lg, xl, 2xl, hd, original)
+ * @param rest - Additional Next.js Image props (alt, width, height, className, etc.)
+ */
 export function BreaseImage({
   breaseImage,
   className,

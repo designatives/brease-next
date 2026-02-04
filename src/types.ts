@@ -58,7 +58,7 @@ export interface BreasePage {
   indexing: boolean;
   variables: string | null;
   customCode: string | null;
-  structuredData: object[];
+  structuredData: object[] | null;
   openGraph: {
     url: string | null;
     type: string | null;
