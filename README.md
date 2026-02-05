@@ -19,6 +19,14 @@ npm install brease-next
 - Next.js >= 13.0.0
 - React >= 18.0.0
 
+## Styles
+
+If you use components that rely on package styles (e.g. section toolbar), import the CSS once in your app (e.g. in your root layout or `_app.tsx`):
+
+```typescript
+import 'brease-next/styles';
+```
+
 ## Configuration
 
 Set up the following environment variables in your `.env.local` file:

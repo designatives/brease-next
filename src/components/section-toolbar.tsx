@@ -1,5 +1,4 @@
 import React from 'react';
-import '../styles/index.css';
 import { BreaseSection } from '../types';
 
 export function SectionToolbar({ data }: { data: BreaseSection }) {

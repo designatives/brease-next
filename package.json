@@ -25,13 +25,14 @@
         "types": "./dist/server.d.ts",
         "default": "./dist/server.cjs"
       }
-    }
+    },
+    "./styles": "./dist/styles/index.css"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && mkdir -p dist/styles && cp src/styles/index.css dist/styles/index.css",
     "clean": "rm -rf dist/",
     "pack:local": "npm run build && npm pack",
     "serve:local": "npm run pack:local && npx --yes serve . -p 4040",
