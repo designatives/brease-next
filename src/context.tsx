@@ -12,7 +12,7 @@ export interface BreaseContextConfig {
 interface BreaseContextProps {
   children: ReactNode;
   config: BreaseContextConfig;
-  locale?: string;
+  locale: string;
 }
 
 /**
@@ -78,6 +78,7 @@ export default async function BreaseContext({ children, config, locale }: Brease
     const breaseData = {
       navigations,
       collections,
+      locale,
       ...config.userParams,
     };
 
@@ -85,6 +86,7 @@ export default async function BreaseContext({ children, config, locale }: Brease
   } else {
     const breaseData = {
       navigations,
+      locale,
       ...config.userParams,
     };
 

@@ -110,7 +110,7 @@ export interface BreaseConfig {
   baseUrl: string;
   token: string;
   env: string;
-  locale: string;
+  defaultLocale: string;
   revalidationTime: number;
 }
 

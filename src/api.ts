@@ -35,7 +35,7 @@ export function validateBreaseConfig(): BreaseConfig {
   const baseUrl = process.env.BREASE_BASE_URL;
   const token = process.env.BREASE_TOKEN;
   const env = process.env.BREASE_ENV;
-  const locale = process.env.BREASE_LOCALE || 'en';
+  const defaultLocale = process.env.BREASE_DEFAULT_LOCALE;
   const revalidationTime = parseInt(process.env.BREASE_REVALIDATION_TIME || '30');
 
   const missingVars: string[] = [];
@@ -43,6 +43,7 @@ export function validateBreaseConfig(): BreaseConfig {
   if (!baseUrl) missingVars.push('BREASE_BASE_URL');
   if (!token) missingVars.push('BREASE_TOKEN');
   if (!env) missingVars.push('BREASE_ENV');
+  if (!defaultLocale) missingVars.push('BREASE_DEFAULT_LOCALE');
 
   if (missingVars.length > 0) {
     throw new Error(
@@ -54,7 +55,7 @@ export function validateBreaseConfig(): BreaseConfig {
     baseUrl: baseUrl!,
     token: token!,
     env: env!,
-    locale,
+    defaultLocale: defaultLocale!,
     revalidationTime,
   };
 }
@@ -84,10 +85,9 @@ const getSiteUrl = (): string => {
   return `${config.baseUrl}`;
 };
 
-const getPageUrl = (pageSlug: string, locale?: string, metaOnly?: boolean): string => {
+const getPageUrl = (pageSlug: string, metaOnly?: boolean): string => {
   const config = getConfig();
-  const effectiveLocale = locale || config.locale;
-  return `${config.baseUrl}/environments/${config.env}/page?locale=${effectiveLocale}&slug=${ensureLeadingSlash(pageSlug)}${metaOnly ? `&metaOnly=true` : ''}`;
+  return `${config.baseUrl}/environments/${config.env}/page?slug=${ensureLeadingSlash(pageSlug)}${metaOnly ? `&metaOnly=true` : ''}`;
 };
 
 const getAlternateLinksUrl = (pageSlug: string): string => {
@@ -95,10 +95,9 @@ const getAlternateLinksUrl = (pageSlug: string): string => {
   return `${config.baseUrl}/environments/${config.env}/page/alternate?slug=${ensureLeadingSlash(pageSlug)}`;
 };
 
-const getNavigationUrl = (navigationId: string, locale?: string): string => {
+const getNavigationUrl = (navigationId: string, locale: string): string => {
   const config = getConfig();
-  const effectiveLocale = locale || config.locale;
-  return `${config.baseUrl}/environments/${config.env}/navigations/${navigationId}?locale=${effectiveLocale}`;
+  return `${config.baseUrl}/environments/${config.env}/navigations/${navigationId}?locale=${locale}`;
 };
 
 const getRedirectsUrl = (): string => {
@@ -172,7 +171,7 @@ async function handleBreaseFetch<T>(
  * Generates static params for Next.js static site generation.
  * Fetches all pages and returns an array of route parameters.
  *
- * @returns Array of page parameters with locale and slug property
+ * @returns Array of page parameters with locale and slug (path segments array for catch-all routes)
  * @example
  * ```typescript
  * export async function generateStaticParams() {
@@ -180,8 +179,8 @@ async function handleBreaseFetch<T>(
  * }
  * ```
  */
-export async function generateBreasePageParams(): Promise<{ locale: string; slug: string }[]> {
-  const allParams = [];
+export async function generateBreasePageParams(): Promise<{ locale: string; slug: string[] }[]> {
+  const allParams: { locale: string; slug: string[] }[] = [];
   const localesResult = await fetchLocales();
   if (!localesResult.success) {
     console.error('Failed to fetch locales for static generation:', localesResult.error);
@@ -194,7 +193,13 @@ export async function generateBreasePageParams(): Promise<{ locale: string; slug
       return [];
     }
     for (const page of pagesResult.data) {
-      allParams.push({ locale: locale.code, slug: page.slug });
+      const slugSegments = (page.slug ?? '')
+        .replace(/^\/+|\/+$/g, '')
+        .split('/')
+        .filter(Boolean);
+      if (slugSegments.length > 0) {
+        allParams.push({ locale: locale.code, slug: slugSegments });
+      }
     }
   }
   return allParams;
@@ -234,11 +239,17 @@ export async function fetchSite(): Promise<BreaseResponse<BreaseSite>> {
  */
 export async function fetchPage(
   pageSlug: string,
-  locale?: string,
   metaOnly?: boolean
 ): Promise<BreaseResponse<BreasePage>> {
+  const config = getConfig();
+  // Normalize slug
+  const slugParts = pageSlug.split('/').filter(Boolean);
+  if (slugParts[0] === config.defaultLocale) {
+    slugParts.shift();
+  }
+  const normalizedSlug = slugParts.join('/');
   return handleBreaseFetch(
-    getPageUrl(pageSlug, locale, metaOnly),
+    getPageUrl(normalizedSlug, metaOnly),
     (json) => json.data.page as BreasePage
   );
 }
@@ -281,10 +292,9 @@ export async function fetchAlternateLinks(
  * }
  * ```
  */
-export async function fetchAllPages(locale?: string): Promise<BreaseResponse<{ slug: string }[]>> {
+export async function fetchAllPages(locale: string): Promise<BreaseResponse<{ slug: string }[]>> {
   const config = getConfig();
-  const effectiveLocale = locale || config.locale;
-  const endpoint = `${config.baseUrl}/environments/${config.env}/pages?locale=${effectiveLocale}`;
+  const endpoint = `${config.baseUrl}/environments/${config.env}/pages?locale=${locale}`;
   return handleBreaseFetch(endpoint, (json) => (json.data.pages as { slug: string }[]) || []);
 }
 
@@ -308,11 +318,10 @@ export async function fetchAllPages(locale?: string): Promise<BreaseResponse<{ s
  */
 export async function fetchCollectionById(
   collectionId: string,
-  locale?: string
+  locale: string
 ): Promise<BreaseResponse<BreaseCollection>> {
   const config = getConfig();
-  const effectiveLocale = locale || config.locale;
-  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}?locale=${effectiveLocale}`;
+  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}?locale=${locale}`;
   return handleBreaseFetch(endpoint, (json) => json.data.collection as BreaseCollection);
 }
 
@@ -335,11 +344,10 @@ export async function fetchCollectionById(
 export async function fetchEntryById(
   collectionId: string,
   entryId: string,
-  locale?: string
+  locale: string
 ): Promise<BreaseResponse<BreaseCollectionEntry>> {
   const config = getConfig();
-  const effectiveLocale = locale || config.locale;
-  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}/entries/${entryId}?locale=${effectiveLocale}`;
+  const endpoint = `${config.baseUrl}/environments/${config.env}/collections/${collectionId}/entries/${entryId}?locale=${locale}`;
   return handleBreaseFetch(endpoint, (json) => json.data.entry as BreaseCollectionEntry);
 }
 
@@ -360,7 +368,7 @@ export async function fetchEntryById(
  */
 export async function fetchNavigation(
   navigationId: string,
-  locale?: string
+  locale: string
 ): Promise<BreaseResponse<BreaseNavigation>> {
   return handleBreaseFetch(
     getNavigationUrl(navigationId, locale),
@@ -427,11 +435,8 @@ export async function fetchLocales(): Promise<BreaseResponse<BreaseLocale[]>> {
  * }
  * ```
  */
-export async function generateBreasePageMetadata(
-  pageSlug: string,
-  locale?: string
-): Promise<Metadata> {
-  const pageResult = await fetchPage(pageSlug, locale);
+export async function generateBreasePageMetadata(pageSlug: string): Promise<Metadata> {
+  const pageResult = await fetchPage(pageSlug);
   const alternatesResult = await fetchAlternateLinks(pageSlug);
 
   if (!pageResult.success || !alternatesResult.success) {
