@@ -135,3 +135,10 @@ export interface BreaseRedirect {
   destination: string;
   type: '301' | '302' | '307' | '308';
 }
+
+export interface BreaseLocale {
+  uuid: string;
+  code: string;
+  name: string;
+  isDefault: boolean;
+}

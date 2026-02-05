@@ -20,8 +20,8 @@ export {
   fetchEntryById,
   fetchNavigation,
   generateBreasePageParams,
-  generateBreaseCollectionParams,
   generateBreasePageMetadata,
+  generateSitemap,
   validateBreaseConfig,
 } from './api.js';
 

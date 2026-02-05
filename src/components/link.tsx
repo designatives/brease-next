@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 
 export interface LinkData {
-  value: string;
+  url: string;
   label: string;
   isExternal?: boolean;
 }
@@ -29,7 +29,7 @@ export function BreaseLink({ linkData, children, ...rest }: BreaseLinkProps) {
     return (
       <a
         title={linkData.label}
-        href={linkData.value}
+        href={linkData.url}
         target="_blank"
         rel="noopener noreferrer"
         {...rest}
@@ -40,7 +40,7 @@ export function BreaseLink({ linkData, children, ...rest }: BreaseLinkProps) {
   }
 
   return (
-    <Link href={linkData.value} title={linkData.label} {...rest}>
+    <Link href={linkData.url} title={linkData.label} {...rest}>
       {children}
     </Link>
   );

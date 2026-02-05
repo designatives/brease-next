@@ -8,7 +8,12 @@ import type {
   BreaseRedirect,
   BreaseResponse,
   BreaseSite,
+  BreaseLocale,
 } from './types.js';
+import {
+  AlternateLinkDescriptor,
+  Languages,
+} from 'next/dist/lib/metadata/types/alternative-urls-types.js';
 
 /**
  * Validates and returns the Brease configuration from environment variables.
@@ -101,6 +106,11 @@ const getRedirectsUrl = (): string => {
   return `${config.baseUrl}/environments/${config.env}/redirects`;
 };
 
+const getLocalesUrl = (): string => {
+  const config = getConfig();
+  return `${config.baseUrl}/environments/${config.env}/locales`;
+};
+
 const getSitemapUrl = (): string => {
   const config = getConfig();
   return `${config.baseUrl}/environments/${config.env}/sitemap`;
@@ -162,9 +172,7 @@ async function handleBreaseFetch<T>(
  * Generates static params for Next.js static site generation.
  * Fetches all pages and returns an array of route parameters.
  *
- * @param slugKey - The key to use for the slug property (defaults to 'subpageSlug')
- * @param locale - Optional locale override (defaults to config locale)
- * @returns Array of page parameters with slug property
+ * @returns Array of page parameters with locale and slug property
  * @example
  * ```typescript
  * export async function generateStaticParams() {
@@ -172,51 +180,24 @@ async function handleBreaseFetch<T>(
  * }
  * ```
  */
-export async function generateBreasePageParams(
-  slugKey: string = 'subpageSlug',
-  locale?: string
-): Promise<Record<string, string>[]> {
-  const result = await fetchAllPages(locale);
-
-  if (!result.success) {
-    console.error('Failed to fetch pages for static generation:', result.error);
+export async function generateBreasePageParams(): Promise<{ locale: string; slug: string }[]> {
+  const allParams = [];
+  const localesResult = await fetchLocales();
+  if (!localesResult.success) {
+    console.error('Failed to fetch locales for static generation:', localesResult.error);
     return [];
   }
-
-  return result.data
-    .filter((page) => page.slug && page.slug !== '/')
-    .map((page) => ({
-      [slugKey]: page.slug.replace(/^\//, ''),
-    }));
-}
-
-/**
- * Generates static params for collection entries in Next.js static site generation.
- * Fetches all entries from a collection and returns an array of route parameters.
- *
- * @param collectionId - The ID of the collection to fetch entries from
- * @param locale - Optional locale override (defaults to config locale)
- * @returns Array of entry parameters with slug property
- * @example
- * ```typescript
- * export async function generateStaticParams() {
- *   return await generateBreaseCollectionParams('blog-posts');
- * }
- * ```
- */
-export async function generateBreaseCollectionParams(collectionId: string, locale?: string) {
-  const result = await fetchCollectionById(collectionId, locale);
-
-  if (!result.success) {
-    console.error('Failed to fetch entries for static generation:', result.error);
-    return [];
+  for (const locale of localesResult.data) {
+    const pagesResult = await fetchAllPages(locale.code);
+    if (!pagesResult.success) {
+      console.error('Failed to fetch pages for static generation:', pagesResult.error);
+      return [];
+    }
+    for (const page of pagesResult.data) {
+      allParams.push({ locale: locale.code, slug: page.slug });
+    }
   }
-
-  return result.data.entries
-    .filter((entry) => entry.slug && entry.slug !== '/')
-    .map((entry) => ({
-      slug: entry.slug.replace(/^\//, ''),
-    }));
+  return allParams;
 }
 
 /**
@@ -279,10 +260,10 @@ export async function fetchPage(
  */
 export async function fetchAlternateLinks(
   pageSlug: string
-): Promise<BreaseResponse<{ [localeCode: string]: string }>> {
+): Promise<BreaseResponse<Languages<string | URL | AlternateLinkDescriptor[] | null>>> {
   return handleBreaseFetch(
     getAlternateLinksUrl(pageSlug),
-    (json) => json.data.alternateLinks as { [localeCode: string]: string }
+    (json) => json.data.alternateLinks as Languages<string | URL | AlternateLinkDescriptor[] | null>
   );
 }
 
@@ -408,6 +389,31 @@ export async function fetchRedirects(): Promise<BreaseResponse<BreaseRedirect[]>
 }
 
 /**
+ * Fetches all locales from Brease CMS.
+ *
+ * @returns Promise resolving to BreaseResponse containing array of locales
+ * @example
+ * ```typescript
+ * export async function generateStaticParams() {
+ *   const allParams: { locale: string; slug: string }[] = []
+ *   const result = await fetchLocales()
+ *   if(result.success){
+ *     for (const locale of result.locales) {
+ *       const pages = await generateBreasePageParams('slug', locale)
+ *       for (const page of pages) {
+ *         allParams.push({ locale, slug: page.slug })
+ *       }
+ *     }
+ *   }
+ *   return allParams
+ * }
+ * ```
+ */
+export async function fetchLocales(): Promise<BreaseResponse<BreaseLocale[]>> {
+  return handleBreaseFetch(getLocalesUrl(), (json) => json.data.locales as BreaseLocale[]);
+}
+
+/**
  * Generates Next.js metadata for a page based on Brease CMS data.
  * Includes SEO metadata, Open Graph tags, and robots directives.
  *
@@ -425,14 +431,16 @@ export async function generateBreasePageMetadata(
   pageSlug: string,
   locale?: string
 ): Promise<Metadata> {
-  const result = await fetchPage(pageSlug, locale);
+  const pageResult = await fetchPage(pageSlug, locale);
+  const alternatesResult = await fetchAlternateLinks(pageSlug);
 
-  if (!result.success) {
-    console.error('Failed to fetch page data for metadata:', result);
+  if (!pageResult.success || !alternatesResult.success) {
+    console.error('Failed to fetch page data for metadata:', pageResult, alternatesResult);
     return {};
   }
 
-  const page = result.data;
+  const page = pageResult.data;
+  const alternates = alternatesResult.data;
 
   const metadata: Metadata = {
     title: page.metaTitle || page.name || undefined,
@@ -442,10 +450,23 @@ export async function generateBreasePageMetadata(
     metadata.description = page.metaDescription;
   }
 
+  if (page.canonicalUrl) {
+    metadata.alternates = {
+      canonical: page.canonicalUrl,
+    };
+  }
+
   if (!page.indexing) {
     metadata.robots = {
       index: false,
       follow: false,
+    };
+  }
+
+  if (alternates && Object.keys(alternates).length > 0) {
+    metadata.alternates = {
+      ...metadata.alternates,
+      languages: alternates,
     };
   }
 
@@ -481,11 +502,8 @@ export async function generateBreasePageMetadata(
  * ```typescript
  * export default function sitemap(): MetadataRoute.Sitemap {
  *  const result = await generateSitemap();
- *  if (result.success) {
- *    return result.data.urlset
- *  } else {
- *    return []
- *  }
+ *  if (result.success) return result.data
+ *  return []
  * }
  * ```
  */
