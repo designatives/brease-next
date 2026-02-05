@@ -6,6 +6,7 @@ import type { BreaseCollection, BreaseNavigation } from './types.js';
 export interface BreaseContextData {
   navigations: Record<string, BreaseNavigation>;
   collections: Record<string, BreaseCollection>;
+  locale: string;
 }
 
 const DataContext = createContext<BreaseContextData | undefined>(undefined);
