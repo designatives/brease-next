@@ -5,7 +5,6 @@ import SectionToolbar from './section-toolbar.js';
 interface BreasePageProps {
   page: BreasePageType;
   sectionMap: Record<string, React.ComponentType<Record<string, unknown>>>;
-  optionalData?: any;
 }
 
 /**
@@ -14,9 +13,8 @@ interface BreasePageProps {
  *
  * @param page - Brease page data
  * @param sectionMap - Map of section type strings to React components
- * @param optionalData - Optional data passed to each section component
  */
-export default function BreasePage({ page, sectionMap, optionalData }: BreasePageProps) {
+export default function BreasePage({ page, sectionMap }: BreasePageProps) {
   const sections = filterSections(page, sectionMap);
   const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
   return sections?.map((section: any, index: number) => {
@@ -33,10 +31,7 @@ export default function BreasePage({ page, sectionMap, optionalData }: BreasePag
           React.createElement('div', {
             className: 'brease-preview-overlay',
           }),
-          React.createElement(section.component, {
-            data: section.data,
-            extra: optionalData || null,
-          })
+          React.createElement(section.component, section.data)
         );
       } else {
         return React.createElement(
@@ -46,10 +41,7 @@ export default function BreasePage({ page, sectionMap, optionalData }: BreasePag
             id: section.page_section_uuid,
             className: 'brease-section',
           },
-          React.createElement(section.component, {
-            data: section.data,
-            extra: optionalData || null,
-          })
+          React.createElement(section.component, section.data)
         );
       }
     }
