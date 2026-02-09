@@ -25,6 +25,9 @@ export {
   validateBreaseConfig,
 } from './api.js';
 
+export { BreaseFetchError } from './errors.js';
+export { ensureSuccess } from './utils.js';
+
 export { default as BreasePage } from './components/page.js';
 export { BreaseImage } from './components/image.js';
 
