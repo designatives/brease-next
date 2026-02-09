@@ -9,6 +9,7 @@ import type {
   BreaseResponse,
   BreaseSite,
 } from './types.js';
+import { BreaseFetchError } from './errors.js';
 
 /**
  * Validates and returns the Brease configuration from environment variables.
@@ -382,8 +383,8 @@ export async function generateBreasePageMetadata(
   const result = await fetchPage(pageSlug, locale);
 
   if (!result.success) {
-    console.error('Failed to fetch page data for metadata:', result);
-    return {};
+    if (result.status === 404) return {};
+    throw new BreaseFetchError(result.error, result.status, result.endpoint);
   }
 
   const page = result.data;
