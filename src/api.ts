@@ -14,6 +14,7 @@ import {
   AlternateLinkDescriptor,
   Languages,
 } from 'next/dist/lib/metadata/types/alternative-urls-types.js';
+import { BreaseFetchError } from './errors.js';
 
 /**
  * Validates and returns the Brease configuration from environment variables.
@@ -456,9 +457,18 @@ export async function generateBreasePageMetadata(pageSlug: string): Promise<Meta
   const pageResult = await fetchPage(pageSlug);
   const alternatesResult = await fetchAlternateLinks(pageSlug);
 
-  if (!pageResult.success || !alternatesResult.success) {
-    console.error('Failed to fetch page data for metadata:', pageResult, alternatesResult);
-    return {};
+  if (!pageResult.success) {
+    if (pageResult.status === 404) return {};
+    throw new BreaseFetchError(pageResult.error, pageResult.status, pageResult.endpoint);
+  }
+
+  if (!alternatesResult.success) {
+    if (alternatesResult.status === 404) return {};
+    throw new BreaseFetchError(
+      alternatesResult.error,
+      alternatesResult.status,
+      alternatesResult.endpoint
+    );
   }
 
   const page = pageResult.data;
