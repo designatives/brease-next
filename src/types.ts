@@ -42,6 +42,7 @@ export interface BreaseNavigationItem {
   url: string | null;
   target: BreasePage | null;
   children: BreaseNavigationItem[];
+  isExternal: boolean;
 }
 
 export interface BreaseNavigation {

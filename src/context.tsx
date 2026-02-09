@@ -1,12 +1,12 @@
 import { ReactNode } from 'react';
 import { BreaseClientProvider } from './client-provider.js';
-import { fetchNavigation, fetchCollectionById } from './api.js';
+import { fetchNavigation, fetchCollectionById, fetchLocales } from './api.js';
 import type { BreaseNavigation, BreaseCollection } from './types.js';
 
 export interface BreaseContextConfig {
   navigations: Array<{ key: string; id: string }>;
   collections?: Array<{ key: string; id: string }>;
-  userParams?: any;
+  userParams: any;
 }
 
 interface BreaseContextProps {
@@ -18,6 +18,7 @@ interface BreaseContextProps {
 /**
  * Server Component that fetches Brease data and provides it to client components.
  * Navigations must be provided, collections are optional.
+ * Fetches available locales to use in navigation language selection.
  * Optionally userParams can be definied so the wrapper can be used as a normal context provider.
  * Can be used directly in server components like layout.tsx.
  *
@@ -42,6 +43,16 @@ interface BreaseContextProps {
  * ```
  */
 export default async function BreaseContext({ children, config, locale }: BreaseContextProps) {
+  const localesResult = await fetchLocales();
+  const availableLocales = [] as string[];
+  if (localesResult.success) {
+    localesResult.data.forEach((locale) => {
+      availableLocales.push(locale.code);
+    });
+  } else {
+    console.error(`Failed to load locales.`);
+  }
+
   const navigationResults = await Promise.all(
     config.navigations.map(async (nav) => ({
       key: nav.key,
@@ -77,17 +88,20 @@ export default async function BreaseContext({ children, config, locale }: Brease
 
     const breaseData = {
       navigations,
+      availableLocales,
       collections,
       locale,
-      ...config.userParams,
+      userParams: config.userParams,
     };
 
     return <BreaseClientProvider brease={breaseData}>{children}</BreaseClientProvider>;
   } else {
     const breaseData = {
       navigations,
+      availableLocales,
+      collections: undefined,
       locale,
-      ...config.userParams,
+      userParams: config.userParams,
     };
 
     return <BreaseClientProvider brease={breaseData}>{children}</BreaseClientProvider>;

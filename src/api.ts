@@ -85,9 +85,9 @@ const getSiteUrl = (): string => {
   return `${config.baseUrl}`;
 };
 
-const getPageUrl = (pageSlug: string, metaOnly?: boolean): string => {
+const getPageUrl = (pageSlug: string, locale?: string, metaOnly?: boolean): string => {
   const config = getConfig();
-  return `${config.baseUrl}/environments/${config.env}/page?slug=${ensureLeadingSlash(pageSlug)}${metaOnly ? `&metaOnly=true` : ''}`;
+  return `${config.baseUrl}/environments/${config.env}/page?locale=${locale || config.defaultLocale}&slug=${ensureLeadingSlash(pageSlug)}${metaOnly ? `&metaOnly=true` : ''}`;
 };
 
 const getAlternateLinksUrl = (pageSlug: string): string => {
@@ -237,19 +237,35 @@ export async function fetchSite(): Promise<BreaseResponse<BreaseSite>> {
  * }
  * ```
  */
+function isLocaleCode(segment: string): boolean {
+  const config = getConfig();
+  if (segment === config.defaultLocale) {
+    return true;
+  }
+  // Basic locale patterns like "en" or "en-US"
+  return /^[a-z]{2}(-[A-Z]{2})?$/.test(segment);
+}
+function parseSlugAndLocale(pageSlug: string): { slug: string; locale: string } {
+  const config = getConfig();
+  const slugParts = pageSlug.split('/').filter(Boolean);
+  let locale = config.defaultLocale;
+  if (slugParts.length > 0 && isLocaleCode(slugParts[0])) {
+    locale = slugParts.shift() as string;
+  }
+  const normalizedSlug = slugParts.join('/');
+  return {
+    slug: normalizedSlug,
+    locale,
+  };
+}
+
 export async function fetchPage(
   pageSlug: string,
   metaOnly?: boolean
 ): Promise<BreaseResponse<BreasePage>> {
-  const config = getConfig();
-  // Normalize slug
-  const slugParts = pageSlug.split('/').filter(Boolean);
-  if (slugParts[0] === config.defaultLocale) {
-    slugParts.shift();
-  }
-  const normalizedSlug = slugParts.join('/');
+  const { slug, locale } = parseSlugAndLocale(pageSlug);
   return handleBreaseFetch(
-    getPageUrl(normalizedSlug, metaOnly),
+    getPageUrl(slug, locale, metaOnly),
     (json) => json.data.page as BreasePage
   );
 }
@@ -272,8 +288,9 @@ export async function fetchPage(
 export async function fetchAlternateLinks(
   pageSlug: string
 ): Promise<BreaseResponse<Languages<string | URL | AlternateLinkDescriptor[] | null>>> {
+  const { slug } = parseSlugAndLocale(pageSlug);
   return handleBreaseFetch(
-    getAlternateLinksUrl(pageSlug),
+    getAlternateLinksUrl(slug),
     (json) => json.data.alternateLinks as Languages<string | URL | AlternateLinkDescriptor[] | null>
   );
 }
