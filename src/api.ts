@@ -198,9 +198,10 @@ export async function generateBreasePageParams(): Promise<{ locale: string; slug
         .replace(/^\/+|\/+$/g, '')
         .split('/')
         .filter(Boolean);
-      if (slugSegments.length > 0) {
-        allParams.push({ locale: locale.code, slug: slugSegments });
-      }
+      // Always push a param, even for the homepage where slugSegments.length === 0.
+      // This ensures that optional catch-all routes (`[[...slug]]`) receive a param
+      // for the root path (`/`) when there is only a single locale.
+      allParams.push({ locale: locale.code, slug: slugSegments });
     }
   }
   return allParams;
