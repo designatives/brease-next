@@ -14,7 +14,6 @@ import {
   AlternateLinkDescriptor,
   Languages,
 } from 'next/dist/lib/metadata/types/alternative-urls-types.js';
-import { BreaseFetchError } from './errors.js';
 
 /**
  * Validates and returns the Brease configuration from environment variables.
@@ -454,22 +453,20 @@ export async function fetchLocales(): Promise<BreaseResponse<BreaseLocale[]>> {
  * }
  * ```
  */
-export async function generateBreasePageMetadata(
-  pageSlug: string
-): Promise<{ success: boolean; data: Metadata }> {
-  const pageResult = await fetchPage(pageSlug);
-  let page = {} as BreasePage;
-  const alternatesResult = await fetchAlternateLinks(pageSlug);
-  let alternates = {} as Languages<string | URL | AlternateLinkDescriptor[] | null>;
+export async function generateBreasePageMetadata(pageResult: BreasePage): Promise<Metadata> {
+  const page = pageResult as BreasePage;
 
-  if (!pageResult.success) {
+  //const alternatesResult = await fetchAlternateLinks(pageSlug);
+  //let alternates = {} as Languages<string | URL | AlternateLinkDescriptor[] | null>;
+
+  /*if (!pageResult.success) {
     if (pageResult.status === 404)
       throw new BreaseFetchError(pageResult.error, pageResult.status, pageResult.endpoint);
   } else {
     page = pageResult.data;
-  }
+  }*/
 
-  if (!alternatesResult.success) {
+  /*if (!alternatesResult.success) {
     if (alternatesResult.status === 404)
       throw new BreaseFetchError(
         alternatesResult.error,
@@ -478,7 +475,7 @@ export async function generateBreasePageMetadata(
       );
   } else {
     alternates = alternatesResult.data;
-  }
+  }*/
 
   const metadata: Metadata = {
     title: page.metaTitle || page.name || undefined,
@@ -501,12 +498,12 @@ export async function generateBreasePageMetadata(
     };
   }
 
-  if (alternates && Object.keys(alternates).length > 0) {
+  /*if (alternates && Object.keys(alternates).length > 0) {
     metadata.alternates = {
       ...metadata.alternates,
       languages: alternates,
     };
-  }
+  }*/
 
   metadata.openGraph = {
     title: page?.openGraph?.title || page?.metaTitle || page?.name || undefined,
@@ -519,20 +516,25 @@ export async function generateBreasePageMetadata(
             url: page?.openGraph?.image,
           },
         ]
-      : undefined,
+      : 'og-image.png',
   };
 
   metadata.twitter = {
+    creator: page?.twitterCard?.creator || undefined,
     site: page?.twitterCard?.site || undefined,
     card: page?.twitterCard?.type as 'summary' | 'summary_large_image' | 'player' | 'app',
     title: page?.twitterCard?.title || page?.metaTitle || page?.name || undefined,
+    images: page?.openGraph?.image
+      ? [
+          {
+            url: page?.openGraph?.image,
+          },
+        ]
+      : 'og-image.png',
     description: page?.twitterCard?.description || page?.metaDescription || undefined,
   };
 
-  return {
-    success: true,
-    data: metadata,
-  };
+  return metadata;
 }
 
 /**
