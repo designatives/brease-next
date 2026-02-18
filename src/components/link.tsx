@@ -5,6 +5,7 @@ export interface LinkData {
   url: string;
   label: string;
   isExternal?: boolean;
+  value: string;
 }
 
 type AnchorProps = ComponentProps<'a'>;
@@ -40,7 +41,7 @@ export function BreaseLink({ linkData, children, ...rest }: BreaseLinkProps) {
   }
 
   return (
-    <Link href={linkData.url} title={linkData.label} {...rest}>
+    <Link href={linkData.value} title={linkData.label} {...rest}>
       {children}
     </Link>
   );
