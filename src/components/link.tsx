@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 
-export interface LinkData {
+export interface BreaseLinkData {
   url: string;
   label: string;
   isExternal?: boolean;
@@ -12,7 +12,7 @@ type AnchorProps = ComponentProps<'a'>;
 type NextLinkProps = ComponentProps<typeof Link>;
 
 type BreaseLinkProps = {
-  linkData: LinkData;
+  linkData: BreaseLinkData;
   children: ReactNode;
 } & Omit<AnchorProps, 'href' | 'title'> &
   Omit<NextLinkProps, 'href' | 'title'>;
