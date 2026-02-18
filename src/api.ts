@@ -454,26 +454,31 @@ export async function fetchLocales(): Promise<BreaseResponse<BreaseLocale[]>> {
  * }
  * ```
  */
-export async function generateBreasePageMetadata(pageSlug: string): Promise<Metadata> {
+export async function generateBreasePageMetadata(
+  pageSlug: string
+): Promise<{ success: boolean; data: Metadata }> {
   const pageResult = await fetchPage(pageSlug);
+  let page = {} as BreasePage;
   const alternatesResult = await fetchAlternateLinks(pageSlug);
+  let alternates = {} as Languages<string | URL | AlternateLinkDescriptor[] | null>;
 
   if (!pageResult.success) {
-    if (pageResult.status === 404) return {};
-    throw new BreaseFetchError(pageResult.error, pageResult.status, pageResult.endpoint);
+    if (pageResult.status === 404)
+      throw new BreaseFetchError(pageResult.error, pageResult.status, pageResult.endpoint);
+  } else {
+    page = pageResult.data;
   }
 
   if (!alternatesResult.success) {
-    if (alternatesResult.status === 404) return {};
-    throw new BreaseFetchError(
-      alternatesResult.error,
-      alternatesResult.status,
-      alternatesResult.endpoint
-    );
+    if (alternatesResult.status === 404)
+      throw new BreaseFetchError(
+        alternatesResult.error,
+        alternatesResult.status,
+        alternatesResult.endpoint
+      );
+  } else {
+    alternates = alternatesResult.data;
   }
-
-  const page = pageResult.data;
-  const alternates = alternatesResult.data;
 
   const metadata: Metadata = {
     title: page.metaTitle || page.name || undefined,
@@ -504,27 +509,30 @@ export async function generateBreasePageMetadata(pageSlug: string): Promise<Meta
   }
 
   metadata.openGraph = {
-    title: page.openGraph.title || page.metaTitle || page.name || undefined,
-    description: page.openGraph.description || page.metaDescription || undefined,
-    type: (page.openGraph.type as 'website' | 'article') || 'website',
-    url: page.openGraph.url || undefined,
-    images: page.openGraph.image
+    title: page?.openGraph?.title || page?.metaTitle || page?.name || undefined,
+    description: page?.openGraph?.description || page?.metaDescription || undefined,
+    type: (page?.openGraph?.type as 'website' | 'article') || 'website',
+    url: page?.openGraph?.url || undefined,
+    images: page?.openGraph?.image
       ? [
           {
-            url: page.openGraph.image,
+            url: page?.openGraph?.image,
           },
         ]
       : undefined,
   };
 
   metadata.twitter = {
-    site: page.twitterCard.site || undefined,
-    card: page.twitterCard.type as 'summary' | 'summary_large_image' | 'player' | 'app',
-    title: page.twitterCard.title || page.metaTitle || page.name || undefined,
-    description: page.twitterCard.description || page.metaDescription || undefined,
+    site: page?.twitterCard?.site || undefined,
+    card: page?.twitterCard?.type as 'summary' | 'summary_large_image' | 'player' | 'app',
+    title: page?.twitterCard?.title || page?.metaTitle || page?.name || undefined,
+    description: page?.twitterCard?.description || page?.metaDescription || undefined,
   };
 
-  return metadata;
+  return {
+    success: true,
+    data: metadata,
+  };
 }
 
 /**
