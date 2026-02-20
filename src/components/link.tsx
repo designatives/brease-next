@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 
-export interface BreaseLinkData {
-  url: string;
+export type BreaseLinkData = {
   label: string;
-  isExternal?: boolean;
+  isExternal: boolean;
   value: string;
-}
+  target: '_blank' | 'self' | null;
+};
 
 type AnchorProps = ComponentProps<'a'>;
 type NextLinkProps = ComponentProps<typeof Link>;
@@ -26,13 +26,15 @@ type BreaseLinkProps = {
  * @param rest - Additional anchor/Link attributes (e.g. className)
  */
 export function BreaseLink({ linkData, children, ...rest }: BreaseLinkProps) {
+  const target = linkData.target === '_blank' ? '_blank' : undefined;
+
   if (linkData.isExternal) {
     return (
       <a
         title={linkData.label}
-        href={linkData.url}
-        target="_blank"
-        rel="noopener noreferrer"
+        href={linkData.value}
+        target={target}
+        rel={target === '_blank' ? 'noopener noreferrer' : undefined}
         {...rest}
       >
         {children}
@@ -41,7 +43,7 @@ export function BreaseLink({ linkData, children, ...rest }: BreaseLinkProps) {
   }
 
   return (
-    <Link href={linkData.value} title={linkData.label} {...rest}>
+    <Link href={linkData.value} title={linkData.label} target={target} {...rest}>
       {children}
     </Link>
   );
