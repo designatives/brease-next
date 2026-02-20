@@ -1,30 +1,19 @@
 {
   "name": "brease-next",
   "version": "0.1.12",
+  "type": "module",
   "description": "Brease CMS integration for Next.js - React components, hooks, and utilities for seamless content management",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.cjs"
-      }
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./server": {
-      "import": {
-        "types": "./dist/server.d.ts",
-        "default": "./dist/server.js"
-      },
-      "require": {
-        "types": "./dist/server.d.ts",
-        "default": "./dist/server.cjs"
-      }
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
     },
     "./styles": "./dist/styles/index.css"
   },
