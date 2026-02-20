@@ -42,6 +42,7 @@ export interface BreaseNavigationItem {
   url: string | null;
   target: BreasePage | null;
   children: BreaseNavigationItem[];
+  isExternal: boolean;
 }
 
 export interface BreaseNavigation {
@@ -55,18 +56,30 @@ export interface BreasePage {
   name: string | null;
   slug: string | null;
   uuid: string | null;
-  parent: null;
   indexing: boolean;
   variables: string | null;
   customCode: string | null;
-  openGraphUrl: string | null;
-  openGraphType: string | null;
-  openGraphImage: string | null;
-  openGraphTitle: string | null;
+  structuredData: object[] | null;
+  openGraph: {
+    url: string | null;
+    type: string | null;
+    image: string | null;
+    title: string | null;
+    description: string | null;
+  };
+  twitterCard: {
+    site: string | null;
+    type: string | null;
+    image: string | null;
+    title: string | null;
+    creator: string | null;
+    description: string | null;
+  };
+  canonicalUrl: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
-  openGraphDescription: string | null;
   sections: BreaseSection[];
+  additionalFields: object[] | null;
 }
 
 export interface BreaseSite {
@@ -98,7 +111,7 @@ export interface BreaseConfig {
   baseUrl: string;
   token: string;
   env: string;
-  locale: string;
+  defaultLocale: string;
   revalidationTime: number;
 }
 
@@ -122,4 +135,11 @@ export interface BreaseRedirect {
   source: string;
   destination: string;
   type: '301' | '302' | '307' | '308';
+}
+
+export interface BreaseLocale {
+  uuid: string;
+  code: string;
+  name: string;
+  isDefault: boolean;
 }

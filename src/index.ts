@@ -17,11 +17,14 @@ export {
   fetchPage,
   fetchAllPages,
   fetchCollectionById,
-  fetchEntryBySlug,
+  fetchEntryById,
   fetchNavigation,
+  fetchAlternateLinks,
+  fetchLocales,
+  fetchRedirects,
   generateBreasePageParams,
-  generateBreaseCollectionParams,
   generateBreasePageMetadata,
+  generateSitemap,
   validateBreaseConfig,
 } from './api.js';
 
@@ -30,6 +33,8 @@ export { ensureSuccess } from './utils.js';
 
 export { default as BreasePage } from './components/page.js';
 export { BreaseImage } from './components/image.js';
+export { BreaseLink } from './components/link.js';
+export type { BreaseLinkData } from './components/link.js';
 
 export { default as BreaseContext, type BreaseContextConfig } from './context.js';
 export { useBrease } from './hooks.js';
