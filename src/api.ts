@@ -36,9 +36,10 @@ export function validateBreaseConfig(): BreaseConfig {
   const token = process.env.BREASE_TOKEN;
   const env = process.env.BREASE_ENV;
   const defaultLocale = process.env.BREASE_DEFAULT_LOCALE;
-  const revalidationTime = parseInt(
-    process.env.BREASE_REVALIDATION_TIME || "30",
-  );
+
+  const revalidationTimeRaw = process.env.BREASE_REVALIDATION_TIME;
+  const revalidationTime =
+    revalidationTimeRaw === undefined ? 30 : Number(revalidationTimeRaw);
 
   const missingVars: string[] = [];
 
@@ -46,6 +47,9 @@ export function validateBreaseConfig(): BreaseConfig {
   if (!token) missingVars.push("BREASE_TOKEN");
   if (!env) missingVars.push("BREASE_ENV");
   if (!defaultLocale) missingVars.push("BREASE_DEFAULT_LOCALE");
+  if (Number.isNaN(revalidationTime) || revalidationTime < 0) {
+    missingVars.push("BREASE_REVALIDATION_TIME");
+  }
 
   if (missingVars.length > 0) {
     throw new Error(
@@ -123,9 +127,23 @@ const getSitemapUrl = (): string => {
 
 const getFetchParams = (): RequestInit => {
   const config = getConfig();
+
+  const isLocalLikeEnv = ["develop", "preview", "local"].includes(
+    (config.env || "").toLowerCase(),
+  );
+  const disableRevalidate = config.revalidationTime === 0 || isLocalLikeEnv;
+
   return {
     method: "GET",
-    next: { revalidate: config.revalidationTime },
+    ...(disableRevalidate // TODO: need to handle
+      ? {
+          // Always reflect latest API changes in develop/preview/local or when time is 0
+          cache: "no-store",
+        }
+      : {
+          // Enable ISR-style revalidation for other environments
+          next: { revalidate: config.revalidationTime },
+        }),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${config.token}`,

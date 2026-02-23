@@ -89,7 +89,6 @@ import { fetchCollectionById, fetchEntryBySlug } from 'brease-next';
 const collectionResult = await fetchCollectionById('collection-id');
 if (collectionResult.success) {
   const collection = collectionResult.data;
-  console.log(collection.name, collection.status);
   collection.entries.forEach(entry => {
     // Access each entry
   });
@@ -247,7 +246,6 @@ import { validateBreaseConfig } from 'brease-next';
 
 try {
   const config = validateBreaseConfig();
-  console.log('Configuration is valid:', config);
 } catch (error) {
   console.error('Configuration error:', error.message);
   // Handle missing or invalid environment variables
