@@ -10,26 +10,10 @@ import type {
   BreaseSite,
   BreaseLocale,
 } from "./types.js";
-import {
-  AlternateLinkDescriptor,
-  Languages,
-} from "next/dist/lib/metadata/types/alternative-urls-types.js";
 
 /**
  * Validates and returns the Brease configuration from environment variables.
  * Throws an error if required configuration is missing.
- *
- * @throws Error if required environment variables are not set
- * @returns BreaseConfig object with validated configuration
- * @example
- * ```typescript
- * try {
- *   const config = validateBreaseConfig();
- *   console.log('Config is valid:', config);
- * } catch (error) {
- *   console.error('Configuration error:', error.message);
- * }
- * ```
  */
 export function validateBreaseConfig(): BreaseConfig {
   const baseUrl = process.env.BREASE_BASE_URL;
@@ -37,19 +21,12 @@ export function validateBreaseConfig(): BreaseConfig {
   const env = process.env.BREASE_ENV;
   const defaultLocale = process.env.BREASE_DEFAULT_LOCALE;
 
-  const revalidationTimeRaw = process.env.BREASE_REVALIDATION_TIME;
-  const revalidationTime =
-    revalidationTimeRaw === undefined ? 30 : Number(revalidationTimeRaw);
-
   const missingVars: string[] = [];
 
   if (!baseUrl) missingVars.push("BREASE_BASE_URL");
   if (!token) missingVars.push("BREASE_TOKEN");
   if (!env) missingVars.push("BREASE_ENV");
   if (!defaultLocale) missingVars.push("BREASE_DEFAULT_LOCALE");
-  if (Number.isNaN(revalidationTime) || revalidationTime < 0) {
-    missingVars.push("BREASE_REVALIDATION_TIME");
-  }
 
   if (missingVars.length > 0) {
     throw new Error(
@@ -62,7 +39,6 @@ export function validateBreaseConfig(): BreaseConfig {
     token: token!,
     env: env!,
     defaultLocale: defaultLocale!,
-    revalidationTime,
   };
 }
 
@@ -91,13 +67,9 @@ const getSiteUrl = (): string => {
   return `${config.baseUrl}`;
 };
 
-const getPageUrl = (
-  pageSlug: string,
-  locale?: string,
-  metaOnly?: boolean,
-): string => {
+const getPageUrl = (pageSlug: string, locale?: string): string => {
   const config = getConfig();
-  return `${config.baseUrl}/environments/${config.env}/page?locale=${locale || config.defaultLocale}&slug=${ensureLeadingSlash(pageSlug)}${metaOnly ? `&metaOnly=true` : ""}`;
+  return `${config.baseUrl}/environments/${config.env}/page?locale=${locale || config.defaultLocale}&slug=${ensureLeadingSlash(pageSlug)}`;
 };
 
 const getAlternateLinksUrl = (pageSlug: string): string => {
@@ -125,24 +97,20 @@ const getSitemapUrl = (): string => {
   return `${config.baseUrl}/environments/${config.env}/sitemap`;
 };
 
-const getFetchParams = (): RequestInit => {
+const getFetchParams = (options?: { tags?: string[] }): RequestInit => {
   const config = getConfig();
-
   const isLocalLikeEnv = ["develop", "preview", "local"].includes(
     (config.env || "").toLowerCase(),
   );
-  const disableRevalidate = config.revalidationTime === 0 || isLocalLikeEnv;
 
   return {
     method: "GET",
-    ...(disableRevalidate // TODO: need to handle
-      ? {
-          // Always reflect latest API changes in develop/preview/local or when time is 0
-          cache: "no-store",
-        }
+    ...(isLocalLikeEnv
+      ? { cache: "no-store" as const }
       : {
-          // Enable ISR-style revalidation for other environments
-          next: { revalidate: config.revalidationTime },
+          next: {
+            ...(options?.tags?.length ? { tags: options.tags } : {}),
+          },
         }),
     headers: {
       "Content-Type": "application/json",
@@ -159,9 +127,10 @@ interface BreaseAPIResponse {
 async function handleBreaseFetch<T>(
   endpoint: string,
   parser: (json: BreaseAPIResponse) => T,
+  options?: { tags?: string[] },
 ): Promise<BreaseResponse<T>> {
   try {
-    const response = await fetch(endpoint, getFetchParams());
+    const response = await fetch(endpoint, getFetchParams(options));
 
     if (!response.ok) {
       return {
@@ -197,12 +166,6 @@ async function handleBreaseFetch<T>(
  * Fetches all pages and returns an array of route parameters.
  *
  * @returns Array of page parameters with locale and slug (path segments array for catch-all routes)
- * @example
- * ```typescript
- * export async function generateStaticParams() {
- *   return await generateBreasePageParams();
- * }
- * ```
  */
 export async function generateBreasePageParams(): Promise<
   { locale: string; slug: string[] }[]
@@ -230,9 +193,6 @@ export async function generateBreasePageParams(): Promise<
         .replace(/^\/+|\/+$/g, "")
         .split("/")
         .filter(Boolean);
-      // Always push a param, even for the homepage where slugSegments.length === 0.
-      // This ensures that optional catch-all routes (`[[...slug]]`) receive a param
-      // for the root path (`/`) when there is only a single locale.
       allParams.push({ locale: locale.code, slug: slugSegments });
     }
   }
@@ -241,47 +201,23 @@ export async function generateBreasePageParams(): Promise<
 
 /**
  * Fetches site-level information from Brease CMS.
- *
- * @returns Promise resolving to BreaseResponse containing site data
- * @example
- * ```typescript
- * const result = await fetchSite();
- * if (result.success) {
- *   console.log(result.data.name, result.data.domain);
- * }
- * ```
  */
 export async function fetchSite(): Promise<BreaseResponse<BreaseSite>> {
   return handleBreaseFetch(
     getSiteUrl(),
     (json) => json.data.site as BreaseSite,
+    { tags: ["brease-site"] },
   );
 }
 
-/**
- * Fetches a specific page by its slug from Brease CMS.
- *
- * @param pageSlug - The slug of the page to fetch
- * @param locale - Optional locale override (defaults to config locale)
- * @param metaOnly - Optional param to fetch only metadata fields
- * @returns Promise resolving to BreaseResponse containing page data with sections, metadata and additionalFields
- * @example
- * ```typescript
- * const result = await fetchPage('about-us');
- * if (result.success) {
- *   const page = result.data;
- *   // Render page sections
- * }
- * ```
- */
 function isLocaleCode(segment: string): boolean {
   const config = getConfig();
   if (segment === config.defaultLocale) {
     return true;
   }
-  // Basic locale patterns like "en" or "en-US"
   return /^[a-z]{2}(-[A-Z]{2})?$/.test(segment);
 }
+
 function parseSlugAndLocale(pageSlug: string): {
   slug: string;
   locale: string;
@@ -299,44 +235,39 @@ function parseSlugAndLocale(pageSlug: string): {
   };
 }
 
+/**
+ * Fetches a specific page by its slug from Brease CMS.
+ *
+ * @param pageSlug - The slug of the page to fetch
+ * @returns Promise resolving to BreaseResponse containing page data with sections, metadata and additionalFields
+ */
 export async function fetchPage(
   pageSlug: string,
-  metaOnly?: boolean,
 ): Promise<BreaseResponse<BreasePage>> {
   const { slug, locale } = parseSlugAndLocale(pageSlug);
   return handleBreaseFetch(
-    getPageUrl(slug, locale, metaOnly),
+    getPageUrl(slug, locale),
     (json) => json.data.page as BreasePage,
+    { tags: ["brease-page", `brease-page-${slug || "/"}`] },
   );
 }
 
 /**
  * Fetches alternate links for a specific page by its slug from Brease CMS.
+ * Useful for navigation language selectors when alternate links are not
+ * available from the page response.
  *
- * @param pageSlug - The slug of the page to fetch
- * @param locale - Optional locale override (defaults to config locale)
- * @returns Promise resolving to BreaseResponse containing an array of alternate link objects {[localeCode: string]: string}
- * @example
- * ```typescript
- * const result = await fetchAlternateLinks('about-us');
- * if (result.success) {
- *   const alternateLinks = result.data;
- *   // Render page sections
- * }
- * ```
+ * @param pageSlug - The slug of the page to fetch alternate links for
+ * @returns Promise resolving to BreaseResponse containing alternate link mapping
  */
 export async function fetchAlternateLinks(
   pageSlug: string,
-): Promise<
-  BreaseResponse<Languages<string | URL | AlternateLinkDescriptor[] | null>>
-> {
+): Promise<BreaseResponse<Record<string, string>>> {
   const { slug } = parseSlugAndLocale(pageSlug);
   return handleBreaseFetch(
     getAlternateLinksUrl(slug),
-    (json) =>
-      json.data.alternateLinks as Languages<
-        string | URL | AlternateLinkDescriptor[] | null
-      >,
+    (json) => json.data.alternateLinks as Record<string, string>,
+    { tags: ["brease-alternates", `brease-alternates-${slug || "/"}`] },
   );
 }
 
@@ -344,15 +275,8 @@ export async function fetchAlternateLinks(
  * Fetches all available pages from Brease CMS.
  * Useful for static site generation.
  *
- * @param locale - Optional locale override (defaults to config locale)
+ * @param locale - Locale code for the pages to fetch
  * @returns Promise resolving to BreaseResponse containing array of page slugs
- * @example
- * ```typescript
- * const result = await fetchAllPages();
- * if (result.success) {
- *   const slugs = result.data.map(page => page.slug);
- * }
- * ```
  */
 export async function fetchAllPages(
   locale: string,
@@ -362,6 +286,7 @@ export async function fetchAllPages(
   return handleBreaseFetch(
     endpoint,
     (json) => (json.data.pages as { slug: string }[]) || [],
+    { tags: ["brease-pages"] },
   );
 }
 
@@ -369,19 +294,8 @@ export async function fetchAllPages(
  * Fetches a collection by its ID, including metadata and all entries.
  *
  * @param collectionId - The ID of the collection to fetch
- * @param locale - Optional locale override (defaults to config locale)
+ * @param locale - Locale code for the collection data
  * @returns Promise resolving to BreaseResponse containing the complete collection with entries
- * @example
- * ```typescript
- * const result = await fetchCollectionById('blog-posts');
- * if (result.success) {
- *   const collection = result.data;
- *   console.log(collection.name, collection.status);
- *   collection.entries.forEach(entry => {
- *     // Render each entry
- *   });
- * }
- * ```
  */
 export async function fetchCollectionById(
   collectionId: string,
@@ -392,6 +306,7 @@ export async function fetchCollectionById(
   return handleBreaseFetch(
     endpoint,
     (json) => json.data.collection as BreaseCollection,
+    { tags: ["brease-collection", `brease-collection-${collectionId}`] },
   );
 }
 
@@ -400,16 +315,8 @@ export async function fetchCollectionById(
  *
  * @param collectionId - The ID of the collection
  * @param entryId - The ID of the entry to fetch
- * @param locale - Optional locale override (defaults to config locale)
+ * @param locale - Locale code for the entry data
  * @returns Promise resolving to BreaseResponse containing the collection entry
- * @example
- * ```typescript
- * const result = await fetchEntryById('col-xxxx', 'ent-xxxx');
- * if (result.success) {
- *   const entry = result.data;
- *   // Render entry
- * }
- * ```
  */
 export async function fetchEntryById(
   collectionId: string,
@@ -421,6 +328,7 @@ export async function fetchEntryById(
   return handleBreaseFetch(
     endpoint,
     (json) => json.data.entry as BreaseCollectionEntry,
+    { tags: ["brease-entry", `brease-entry-${entryId}`] },
   );
 }
 
@@ -428,16 +336,8 @@ export async function fetchEntryById(
  * Fetches navigation data by its ID.
  *
  * @param navigationId - The ID of the navigation to fetch
- * @param locale - Optional locale override (defaults to config locale)
+ * @param locale - Locale code for the navigation data
  * @returns Promise resolving to BreaseResponse containing navigation data
- * @example
- * ```typescript
- * const result = await fetchNavigation('header-nav');
- * if (result.success) {
- *   const nav = result.data;
- *   // Render navigation items
- * }
- * ```
  */
 export async function fetchNavigation(
   navigationId: string,
@@ -446,6 +346,7 @@ export async function fetchNavigation(
   return handleBreaseFetch(
     getNavigationUrl(navigationId, locale),
     (json) => json.data.navigation as BreaseNavigation,
+    { tags: ["brease-nav", `brease-nav-${navigationId}`] },
   );
 }
 
@@ -453,17 +354,6 @@ export async function fetchNavigation(
  * Fetches all configured redirects from Brease CMS.
  *
  * @returns Promise resolving to BreaseResponse containing array of redirects
- * @example
- * ```typescript
- * const result = await fetchRedirects();
- * if (result.success) {
- *   const redirects = result.data.map(r => ({
- *     source: r.source,
- *     destination: r.destination,
- *     permanent: r.type === '301'
- *   }));
- * }
- * ```
  */
 export async function fetchRedirects(): Promise<
   BreaseResponse<BreaseRedirect[]>
@@ -471,6 +361,7 @@ export async function fetchRedirects(): Promise<
   return handleBreaseFetch(
     getRedirectsUrl(),
     (json) => json.data.redirects as BreaseRedirect[],
+    { tags: ["brease-redirects"] },
   );
 }
 
@@ -478,82 +369,37 @@ export async function fetchRedirects(): Promise<
  * Fetches all locales from Brease CMS.
  *
  * @returns Promise resolving to BreaseResponse containing array of locales
- * @example
- * ```typescript
- * export async function generateStaticParams() {
- *   const allParams: { locale: string; slug: string }[] = []
- *   const result = await fetchLocales()
- *   if(result.success){
- *     for (const locale of result.locales) {
- *       const pages = await generateBreasePageParams('slug', locale)
- *       for (const page of pages) {
- *         allParams.push({ locale, slug: page.slug })
- *       }
- *     }
- *   }
- *   return allParams
- * }
- * ```
  */
 export async function fetchLocales(): Promise<BreaseResponse<BreaseLocale[]>> {
   return handleBreaseFetch(
     getLocalesUrl(),
     (json) => json.data.locales as BreaseLocale[],
+    { tags: ["brease-locales"] },
   );
 }
 
 /**
  * Generates Next.js metadata for a page based on Brease CMS data.
- * Includes SEO metadata, Open Graph tags, and robots directives.
+ * Reads all SEO fields directly from the page object — no additional fetches.
  *
- * @param pageSlug - The slug of the page to generate metadata for
- * @param locale - Optional locale override (defaults to config locale)
- * @returns Promise resolving to Next.js Metadata object
- * @example
- * ```typescript
- * export async function generateMetadata({ params }: { params: { slug: string } }) {
- *   return await generateBreasePageMetadata(params.slug);
- * }
- * ```
+ * @param page - The page to generate metadata for
+ * @param options - Optional configuration (metadataBase for resolving relative OG image URLs)
+ * @returns Next.js Metadata object
  */
-export async function generateBreasePageMetadata(
-  pageResult: BreasePage,
-): Promise<Metadata> {
-  const page = pageResult as BreasePage;
+export function generateBreasePageMetadata(
+  page: BreasePage,
+  options?: { metadataBase?: string | URL },
+): Metadata {
+  const metadata: Metadata = {};
 
-  //const alternatesResult = await fetchAlternateLinks(pageSlug);
-  //let alternates = {} as Languages<string | URL | AlternateLinkDescriptor[] | null>;
+  if (options?.metadataBase) {
+    metadata.metadataBase = new URL(options.metadataBase);
+  }
 
-  /*if (!pageResult.success) {
-    if (pageResult.status === 404)
-      throw new BreaseFetchError(pageResult.error, pageResult.status, pageResult.endpoint);
-  } else {
-    page = pageResult.data;
-  }*/
-
-  /*if (!alternatesResult.success) {
-    if (alternatesResult.status === 404)
-      throw new BreaseFetchError(
-        alternatesResult.error,
-        alternatesResult.status,
-        alternatesResult.endpoint
-      );
-  } else {
-    alternates = alternatesResult.data;
-  }*/
-
-  const metadata: Metadata = {
-    title: page.metaTitle || page.name || undefined,
-  };
+  metadata.title = page.metaTitle || page.name || undefined;
 
   if (page.metaDescription) {
     metadata.description = page.metaDescription;
-  }
-
-  if (page.canonicalUrl) {
-    metadata.alternates = {
-      canonical: page.canonicalUrl,
-    };
   }
 
   if (!page.indexing) {
@@ -563,64 +409,75 @@ export async function generateBreasePageMetadata(
     };
   }
 
-  /*if (alternates && Object.keys(alternates).length > 0) {
-    metadata.alternates = {
-      ...metadata.alternates,
-      languages: alternates,
+  const alternates: Metadata["alternates"] = {};
+  if (page.canonicalUrl) {
+    alternates.canonical = page.canonicalUrl;
+  }
+  if (page.alternateLinks && Object.keys(page.alternateLinks).length > 0) {
+    alternates.languages = page.alternateLinks;
+  }
+  if (Object.keys(alternates).length > 0) {
+    metadata.alternates = alternates;
+  }
+
+  const ogTitle =
+    page.openGraph?.title || page.metaTitle || page.name || undefined;
+  const ogDescription =
+    page.openGraph?.description || page.metaDescription || undefined;
+  const ogImage = page.openGraph?.image;
+
+  if (ogTitle || ogDescription || ogImage) {
+    metadata.openGraph = {
+      title: ogTitle,
+      description: ogDescription,
+      type: (page.openGraph?.type as "website" | "article") || "website",
+      url: page.openGraph?.url || undefined,
+      images: ogImage ? [{ url: ogImage }] : undefined,
     };
-  }*/
+  }
 
-  metadata.openGraph = {
-    title: page?.openGraph?.title || page?.metaTitle || page?.name || undefined,
-    description:
-      page?.openGraph?.description || page?.metaDescription || undefined,
-    type: (page?.openGraph?.type as "website" | "article") || "website",
-    url: page?.openGraph?.url || undefined,
-    images: page?.openGraph?.image
-      ? [
-          {
-            url: page?.openGraph?.image,
-          },
-        ]
-      : undefined,
-  };
+  const twitterTitle =
+    page.twitterCard?.title || page.metaTitle || page.name || undefined;
+  const twitterDescription =
+    page.twitterCard?.description || page.metaDescription || undefined;
+  const twitterImage = page.twitterCard?.image || ogImage;
 
-  metadata.twitter = {
-    creator: page?.twitterCard?.creator || undefined,
-    site: page?.twitterCard?.site || undefined,
-    card: page?.twitterCard?.type as
-      | "summary"
-      | "summary_large_image"
-      | "player"
-      | "app",
-    title:
-      page?.twitterCard?.title || page?.metaTitle || page?.name || undefined,
-    images: page?.openGraph?.image
-      ? [
-          {
-            url: page?.openGraph?.image,
-          },
-        ]
-      : undefined,
-    description:
-      page?.twitterCard?.description || page?.metaDescription || undefined,
-  };
+  if (twitterTitle || twitterDescription || twitterImage) {
+    metadata.twitter = {
+      card:
+        (page.twitterCard?.type as
+          | "summary"
+          | "summary_large_image"
+          | "player"
+          | "app") || "summary_large_image",
+      title: twitterTitle,
+      description: twitterDescription,
+      creator: page.twitterCard?.creator || undefined,
+      site: page.twitterCard?.site || undefined,
+      images: twitterImage ? [{ url: twitterImage }] : undefined,
+    };
+  }
 
   return metadata;
 }
 
 /**
- * Generates sitemap from Brease CMS pages for NextJS.
+ * Generates a robots.txt configuration for Next.js.
  *
- * @returns Promise resolving to MetadataRoute.Sitemap
- * @example
- * ```typescript
- * export default function sitemap(): MetadataRoute.Sitemap {
- *  const result = await generateSitemap();
- *  if (result.success) return result.data
- *  return []
- * }
- * ```
+ * @param siteUrl - The canonical site URL (e.g., "https://example.com")
+ * @returns MetadataRoute.Robots object for use in app/robots.ts
+ */
+export function generateBreaseRobots(siteUrl: string): MetadataRoute.Robots {
+  return {
+    rules: { userAgent: "*", allow: "/" },
+    sitemap: `${siteUrl}/sitemap.xml`,
+  };
+}
+
+/**
+ * Generates sitemap from Brease CMS pages for Next.js.
+ *
+ * @returns Promise resolving to BreaseResponse containing sitemap data
  */
 export async function generateSitemap(): Promise<
   BreaseResponse<MetadataRoute.Sitemap>
@@ -628,5 +485,6 @@ export async function generateSitemap(): Promise<
   return handleBreaseFetch(
     getSitemapUrl(),
     (json) => json.data.urlset as MetadataRoute.Sitemap,
+    { tags: ["brease-sitemap"] },
   );
 }

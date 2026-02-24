@@ -53,9 +53,9 @@ export interface BreaseNavigation {
 }
 
 export interface BreasePage {
-  name: string | null;
-  slug: string | null;
-  uuid: string | null;
+  name: string;
+  slug: string;
+  uuid: string;
   indexing: boolean;
   variables: string | null;
   customCode: string | null;
@@ -79,7 +79,7 @@ export interface BreasePage {
   metaTitle: string | null;
   metaDescription: string | null;
   sections: BreaseSection[];
-  additionalFields: object[] | null;
+  alternateLinks: Record<string, string> | null;
 }
 
 export interface BreaseSite {
@@ -112,7 +112,6 @@ export interface BreaseConfig {
   token: string;
   env: string;
   defaultLocale: string;
-  revalidationTime: number;
 }
 
 export interface BreaseCollectionEntry {
@@ -134,7 +133,7 @@ export interface BreaseRedirect {
   uuid: string;
   source: string;
   destination: string;
-  type: '301' | '302' | '307' | '308';
+  type: "301" | "302" | "307" | "308";
 }
 
 export interface BreaseLocale {

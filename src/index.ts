@@ -10,7 +10,7 @@ export type {
   BreaseConfig,
   BreaseCollection,
   BreaseCollectionEntry,
-} from './types.js';
+} from "./types.js";
 
 export {
   fetchSite,
@@ -24,17 +24,24 @@ export {
   fetchRedirects,
   generateBreasePageParams,
   generateBreasePageMetadata,
+  generateBreaseRobots,
   generateSitemap,
   validateBreaseConfig,
-} from './api.js';
+} from "./api.js";
 
-export { BreaseFetchError } from './errors.js';
-export { ensureSuccess } from './utils.js';
+export { BreaseFetchError } from "./errors.js";
+export { ensureSuccess } from "./utils.js";
 
-export { default as BreasePage } from './components/page.js';
-export { BreaseImage } from './components/image.js';
-export { BreaseLink } from './components/link.js';
-export type { BreaseLinkData } from './components/link.js';
+export { default as BreasePage } from "./components/page.js";
+export { BreaseImage } from "./components/image.js";
+export { BreaseLink } from "./components/link.js";
+export type { BreaseLinkData } from "./components/link.js";
+export { BreaseStructuredData } from "./components/structured-data.js";
+export { BreaseCustomCode } from "./components/custom-code.js";
+export { BreasePageAlternates } from "./components/page-alternates.js";
 
-export { default as BreaseContext, type BreaseContextConfig } from './context.js';
-export { useBrease } from './hooks.js';
+export {
+  default as BreaseContext,
+  type BreaseContextConfig,
+} from "./context.js";
+export { useBrease } from "./hooks.js";
