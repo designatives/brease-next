@@ -1,7 +1,7 @@
 export interface BreaseSection {
   name: string;
   page_section_uuid: string;
-  type: string;
+  key: string;
   uuid: string;
   elements: SectionElementProps;
 }
@@ -35,12 +35,15 @@ export interface BreaseMediaVariant {
   width: number;
 }
 
-export interface BreaseNavigationItem {
-  uuid: string;
+export interface BreaseLinkData {
+  label: string;
+  isExternal: boolean;
   value: string;
-  type: string;
-  url: string | null;
-  target: BreasePage | null;
+  target: "_blank" | "_self" | null;
+}
+
+export interface BreaseNavigationItem extends BreaseLinkData {
+  uuid: string;
   children: BreaseNavigationItem[];
 }
 
@@ -55,17 +58,31 @@ export interface BreasePage {
   name: string | null;
   slug: string | null;
   uuid: string | null;
-  parent: null;
   indexing: boolean;
   variables: string | null;
   customCode: string | null;
-  openGraphUrl: string | null;
-  openGraphType: string | null;
-  openGraphImage: string | null;
-  openGraphTitle: string | null;
+  structuredData: object[] | null;
+  openGraph: {
+    url: string | null;
+    type: string | null;
+    image: string | null;
+    title: string | null;
+    description: string | null;
+  };
+  twitterCard: {
+    site: string | null;
+    type: string | null;
+    image: string | null;
+    title: string | null;
+    creator: string | null;
+    description: string | null;
+  };
+  canonicalUrl: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
-  openGraphDescription: string | null;
+  references: object[] | null;
+  alternateLinks: Record<string, string> | null;
+  parentPageSlug: string;
   sections: BreaseSection[];
 }
 
@@ -98,7 +115,7 @@ export interface BreaseConfig {
   baseUrl: string;
   token: string;
   env: string;
-  locale: string;
+  defaultLocale: string;
   revalidationTime: number;
 }
 
@@ -121,5 +138,12 @@ export interface BreaseRedirect {
   uuid: string;
   source: string;
   destination: string;
-  type: '301' | '302' | '307' | '308';
+  type: "301" | "302" | "307" | "308";
+}
+
+export interface BreaseLocale {
+  uuid: string;
+  code: string;
+  name: string;
+  isDefault: boolean;
 }

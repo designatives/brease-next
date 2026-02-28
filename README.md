@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/npm/l/brease-next.svg)](https://github.com/designatives/brease-next/blob/main/LICENSE)
 [![CI](https://github.com/designatives/brease-next/actions/workflows/ci.yml/badge.svg)](https://github.com/designatives/brease-next/actions/workflows/ci.yml)
 
-Official Next.js integration for Brease CMS - React components, hooks, and utilities for seamless headless CMS content management.
+Official Next.js integration for Brease CMS — React components, hooks, and utilities for seamless headless CMS content management with SSG and good SEO.
 
 ## Installation
 
@@ -27,283 +27,414 @@ Set up the following environment variables in your `.env.local` file:
 BREASE_BASE_URL=https://your-brease-api.com
 BREASE_TOKEN=your_api_token
 BREASE_ENV=your_environment_id
-BREASE_LOCALE=en  # Optional: Locale for content (defaults to 'en')
-BREASE_REVALIDATION_TIME=30  # Optional: Cache revalidation time in seconds
+BREASE_DEFAULT_LOCALE=en          # Default locale code (e.g. 'en')
+BREASE_REVALIDATION_TIME=30      # Cache revalidation time in seconds (ISR). 0 or local env → no-store
 ```
 
-## Usage
+`BREASE_REVALIDATION_TIME` controls Next.js `next: { revalidate }` on all fetches:
 
-### Fetching Pages
+- `0` or local-like envs (`develop`, `preview`, `local`) → `cache: 'no-store'` (always fetch fresh)
+- `> 0` → ISR-style revalidation, pages regenerate after the specified number of seconds
 
-```typescript
-import { fetchPage, BreasePage } from 'brease-next';
+## Styles
 
-export default async function Page({ params }: { params: { slug: string } }) {
-  const result = await fetchPage(params.slug);
+If you use components that rely on package styles (e.g. the section toolbar in preview), import the CSS once in your app (typically in `app/layout.tsx`):
 
-  if (!result.success) {
-    return <div>Error: {result.error}</div>;
-  }
+```ts
+import "brease-next/styles";
+```
 
-  const page = result.data;
+## Recommended App Router Architecture
 
+Brease context is driven by the **page slug**: you put `BreaseContext` in a **slug layout** so it can fetch the page (and derive locale from the slug). The context stores only **alternateLinks**, **references**, navigations, optional collections, and userParams (not the full page). Client components (Header, language selector, etc.) use `useBrease()` to read them. The slug page fetches the full page for metadata and content rendering.
+
+### Project structure
+
+```txt
+app/
+  layout.tsx                # Root: <html>, <body>, styles, {children}
+  [[...slug]]/
+    layout.tsx              # Slug layout: BreaseContext(config, slug), Header, Footer
+    page.tsx                # Slug page: generateMetadata, BreasePage, structured data
+  sitemap.ts
+  robots.ts
+lib/
+  brease/
+    component-map.ts        # Section mapping + BreaseContextConfig
+    get-page.ts            # Optional: cache(fetchPage) for deduplication
+components/
+  layout/
+    Header.tsx              # useBrease() for navigations, alternateLinks, locale
+    Footer.tsx
+  section/
+    HeroSection.tsx
+    ContentSection.tsx
+    ...
+```
+
+### Root layout (`app/layout.tsx`)
+
+Only structure and global styles. No Brease logic here.
+
+```tsx
+import "brease-next/styles";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <BreasePage
-      page={page}
-      sectionMap={{
-        'hero': HeroSection,
-        'content': ContentSection,
-        // Map your section types to components
-      }}
-    />
+    <html lang="en">
+      <body>{children}</body>
+    </html>
   );
 }
 ```
 
-### Generating Static Params
+### Cached getPage (`lib/brease/get-page.ts`)
 
-For static site generation, use the provided helper functions:
+Export a single cached page fetcher and pass it to both the slug layout and the page. That way the **context**, **generateMetadata**, and **page** component share one request per slug (no duplicate fetch).
 
-```typescript
-import { generateBreasePageParams } from 'brease-next';
+```tsx
+import { cache } from "react";
+import { fetchPage } from "brease-next";
 
-export async function generateStaticParams() {
-  return await generateBreasePageParams();
-}
+export const getPage = cache(async (slug: string) => fetchPage(slug));
 ```
 
-### Fetching Collections
+### Slug layout (`app/[[...slug]]/layout.tsx`)
 
-```typescript
-import { fetchCollectionById, fetchEntryBySlug } from 'brease-next';
+`BreaseContext` receives **config**, **slug**, and optionally **getPage**. It fetches navigations, collections, and locales; uses `getPage(slug)` (or `fetchPage(slug)`) to get alternate links and references for the current page; derives **locale** from the slug; and puts **alternateLinks**, **references**, navigations, collections, and userParams into context (not the full page).
 
-// Fetch a collection with all its entries
-const collectionResult = await fetchCollectionById('collection-id');
-if (collectionResult.success) {
-  const collection = collectionResult.data;
-  console.log(collection.name, collection.status);
-  collection.entries.forEach(entry => {
-    // Access each entry
-  });
-}
+```tsx
+import { BreaseContext } from "brease-next";
+import { contextData } from "@/lib/brease/component-map";
+import { getPage } from "@/lib/brease/get-page";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 
-// Fetch a specific entry by slug
-const entryResult = await fetchEntryBySlug('collection-id', 'entry-slug');
-```
+export default async function SlugLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ slug?: string[] }>;
+}) {
+  const { slug } = await params;
+  const slugStr = (slug ?? []).join("/");
 
-### Using the Context Provider
-
-Wrap your application with `BreaseContext` to provide navigation and collection data to all components:
-
-```typescript
-import { BreaseContext } from 'brease-next';
-
-export default async function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <BreaseContext
-      config={{
-        navigations: [
-          { key: 'header', id: 'nav-id-1' },
-          { key: 'footer', id: 'nav-id-2' }
-        ],
-        collections: [
-          { key: 'posts', id: 'collection-id' }
-        ]
-      }}
-    >
-      {children}
+    <BreaseContext config={contextData} slug={slugStr} getPage={getPage}>
+      <Header />
+      <main>{children}</main>
+      <Footer />
     </BreaseContext>
   );
 }
 ```
 
-### Using the Hook
+### Slug page (`app/[[...slug]]/page.tsx`)
 
-Access navigation and collection data in client components:
+Use the same **getPage** from the shared module for **generateMetadata** and the page component. With **getPage** also passed to the context, layout, metadata and page all share one cached request per slug.
 
-```typescript
-'use client';
+```tsx
+import {
+  generateBreasePageParams,
+  generateBreasePageMetadata,
+  BreasePage,
+  BreaseStructuredData,
+  BreaseCustomCode,
+  BreaseFetchError,
+} from "brease-next";
+import { componentMap } from "@/lib/brease/component-map";
+import { getPage } from "@/lib/brease/get-page";
+import { notFound } from "next/navigation";
 
-import { useBrease } from 'brease-next';
+export const dynamicParams = true;
 
-export function Navigation() {
-  const { navigations, collections } = useBrease();
-  const headerNav = navigations.header;
+export async function generateStaticParams() {
+  const params = await generateBreasePageParams();
+  return params.map(({ slug }) => ({ slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug?: string[] }>;
+}) {
+  const { slug } = await params;
+  const slugStr = (slug ?? []).join("/");
+  const result = await getPage(slugStr);
+  if (!result.success) return {};
+  return generateBreasePageMetadata(result.data, {
+    metadataBase: "https://example.com",
+  });
+}
+
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug?: string[] }>;
+}) {
+  const { slug } = await params;
+  const slugStr = (slug ?? []).join("/");
+  const result = await getPage(slugStr);
+
+  if (!result.success) {
+    if (result.status === 404) notFound();
+    throw new BreaseFetchError(result.error, result.status, result.endpoint);
+  }
 
   return (
-    <nav>
-      {headerNav?.items.map((item) => (
-        <a key={item.value} href={item.url}>
-          {item.value}
-        </a>
-      ))}
-    </nav>
+    <>
+      <BreaseStructuredData page={result.data} />
+      <BreaseCustomCode page={result.data} />
+      <BreasePage page={result.data} sectionMap={componentMap} />
+    </>
   );
 }
 ```
 
-### Rendering Images
+### Component map (`lib/brease/component-map.ts`)
 
-Use the `BreaseImage` component for optimized image rendering:
+Maps section `type` values from CMS to React components. Also configures which navigations/collections to load.
 
-```typescript
-import { BreaseImage } from 'brease-next';
+**Important:** Every component you pass in `componentMap` to `<BreasePage>` must be explicitly marked as a Client Component with `'use client'` at the top of its file. This is required so they can be used correctly with the page renderer.
 
-export function MyComponent({ imageData }) {
-  return <BreaseImage breaseImage={imageData} className="my-image" />;
+```tsx
+import type { BreaseContextConfig } from "brease-next";
+import { HeroSection } from "@/components/section/HeroSection";
+import { ContentSection } from "@/components/section/ContentSection";
+
+export const componentMap: Record<string, React.ComponentType<any>> = {
+  hero: HeroSection,
+  content: ContentSection,
+};
+
+export const contextData: BreaseContextConfig = {
+  navigations: [{ key: "mainNavigation", id: "nav-xxxxx" }],
+  collections: [],
+  userParams: {},
+};
+```
+
+### Header with navigation + language selector (`components/layout/Header.tsx`)
+
+Uses `useBrease()` to read navigations, `alternateLinks`, `references`, and `locale` from context (provided by the slug layout).
+
+```tsx
+"use client";
+
+import { useBrease, BreaseLink } from "brease-next";
+
+export function Header() {
+  const { navigations, alternateLinks, availableLocales, locale } = useBrease();
+  const nav = navigations.mainNavigation;
+
+  return (
+    <header>
+      <nav>
+        <ul>
+          {nav?.items.map((item) => (
+            <li key={item.uuid}>
+              <BreaseLink linkData={item}>{item.value}</BreaseLink>
+              {item.children?.length ? (
+                <ul>
+                  {item.children.map((child) => (
+                    <li key={child.uuid}>
+                      <BreaseLink linkData={child}>{child.value}</BreaseLink>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <div className="language-selector">
+        {availableLocales.map((loc) => (
+          <a
+            key={loc}
+            href={alternateLinks[loc] || `/${loc}`}
+            aria-current={loc === locale ? "page" : undefined}
+          >
+            {loc.toUpperCase()}
+          </a>
+        ))}
+      </div>
+    </header>
+  );
 }
 ```
 
-### Generating Metadata
+### Sitemap (`app/sitemap.ts`)
 
-Generate SEO metadata for your pages:
+```tsx
+import { generateSitemap } from "brease-next";
 
-```typescript
-import { generateBreasePageMetadata } from 'brease-next';
-
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  return await generateBreasePageMetadata(params.slug);
-}
-```
-
-### Handling Redirects
-
-Fetch and implement redirects from Brease CMS:
-
-```typescript
-import { fetchRedirects } from 'brease-next';
-
-export async function getRedirects() {
-  const result = await fetchRedirects();
-
-  if (result.success) {
-    return result.data.map(redirect => ({
-      source: redirect.source,
-      destination: redirect.destination,
-      permanent: redirect.permanent === '301'
-    }));
-  }
-
+export default async function sitemap() {
+  const result = await generateSitemap();
+  if (result.success) return result.data;
   return [];
 }
 ```
 
-## Error Handling
+### Robots (`app/robots.ts`)
 
-All fetch functions return a `BreaseResponse<T>` type that includes both success and error states:
+```tsx
+import { generateBreaseRobots } from "brease-next";
 
-```typescript
+export default function robots() {
+  return generateBreaseRobots("https://example.com");
+}
+```
+
+You can customize robots with `GenerateBreaseRobotsOptions`:
+
+```tsx
+import {
+  generateBreaseRobots,
+  type GenerateBreaseRobotsOptions,
+} from "brease-next";
+
+export default function robots() {
+  const options: GenerateBreaseRobotsOptions = {
+    rules: { userAgent: "*", allow: "/", disallow: ["/admin/"] },
+  };
+  return generateBreaseRobots("https://example.com", options);
+}
+```
+
+## Core Concepts & APIs
+
+### Configuration: `validateBreaseConfig()`
+
+Validates and returns the Brease configuration from environment variables.
+
+```ts
+import { validateBreaseConfig } from "brease-next";
+
+try {
+  const config = validateBreaseConfig();
+  console.log("Config is valid:", config);
+} catch (error) {
+  console.error("Configuration error:", (error as Error).message);
+}
+```
+
+### Fetch functions
+
+All fetch functions return a `BreaseResponse<T>`:
+
+```ts
 type BreaseResponse<T> =
   | { success: true; data: T; status: number }
   | { success: false; error: string; status: number; endpoint?: string };
 ```
 
-### Handling Errors
-
-Always check the `success` property before accessing data:
-
-```typescript
-const result = await fetchPage('about');
-
-if (!result.success) {
-  // Handle error case
-  console.error('Failed to fetch page:', result.error);
-  console.error('Status code:', result.status);
-  console.error('Endpoint:', result.endpoint);
-
-  // Show error UI to user
-  return <ErrorPage message={result.error} />;
-}
-
-// Safe to access data now
-const page = result.data;
-```
-
-### Common Error Scenarios
-
-- **Missing Environment Variables**: Ensure all required env vars are set (`BREASE_BASE_URL`, `BREASE_TOKEN`, `BREASE_ENV`)
-- **Network Errors**: Check network connectivity and API availability
-- **404 Not Found**: The requested resource (page, collection, etc.) doesn't exist
-- **401 Unauthorized**: Invalid or expired `BREASE_TOKEN`
-- **Rate Limiting**: Too many requests to the API
-
-## API Reference
-
-### Configuration
-
-#### `validateBreaseConfig()`
-Validates and returns the Brease configuration from environment variables. Useful for debugging configuration issues.
-
-```typescript
-import { validateBreaseConfig } from 'brease-next';
-
-try {
-  const config = validateBreaseConfig();
-  console.log('Configuration is valid:', config);
-} catch (error) {
-  console.error('Configuration error:', error.message);
-  // Handle missing or invalid environment variables
-}
-```
-
-### Fetch Functions
-
-#### `fetchSite()`
-Fetches site-level information.
-
-#### `fetchPage(pageSlug: string)`
-Fetches a specific page by slug.
-
-#### `fetchAllPages()`
-Fetches all available pages (useful for static generation).
-
-#### `fetchCollectionById(collectionId: string)`
-Fetches a collection by its ID, including metadata and all entries.
-
-#### `fetchEntryBySlug(collectionId: string, entrySlug: string)`
-Fetches a specific collection entry by slug.
-
-#### `fetchNavigation(navigationId: string)`
-Fetches navigation data by ID.
-
-#### `fetchRedirects()`
-Fetches all configured redirects.
+- **`fetchSite()`** – Site-level information.
+- **`fetchPage(pageSlug: string)`** – Full page with sections and meta.
+- **`fetchAllPages(locale: string)`** – All pages for a locale (used by `generateBreasePageParams`).
+- **`fetchCollectionById(collectionId: string, locale: string)`** – A collection with its entries.
+- **`fetchEntryById(collectionId: string, entryId: string, locale: string)`** – Single entry from a collection.
+- **`fetchNavigation(navigationId: string, locale: string)`** – Navigation tree by ID.
+- **`fetchLocales()`** – Available locales for the site.
+- **`fetchRedirects()`** – Configured redirects.
+- **`fetchAlternateLinks(slug: string)`** – Alternate links map for a page (kept for advanced use; page detail should already include `alternateLinks`).
+- **`generateBreasePageParams()`** – Helper for `generateStaticParams`; returns `{ locale, slug: string[] }[]`.
+- **`generateSitemap()`** – Fetches sitemap data from Brease.
 
 ### Components
 
-#### `<BreasePage>`
-Renders a page with its sections mapped to React components.
+- **`<BreasePage page sectionMap>`**
+  - Renders your mapped section components. All components in `sectionMap` must be Client Components: add `'use client'` at the top of each section component file (e.g. `HeroSection.tsx`, `ContentSection.tsx`).
+  - Automatically shows the preview toolbar when rendered inside the Brease CMS iframe.
 
-Props:
-- `page: BreasePageType` - The page data from Brease
-- `sectionMap: Record<string, React.ComponentType>` - Maps section types to components
+- **`<BreaseStructuredData page>`**
+  - Server component.
+  - Renders `page.structuredData` as JSON-LD in `<script type="application/ld+json">`.
 
-#### `<BreaseImage>`
-Renders an optimized Next.js Image component.
+- **`<BreaseCustomCode page>`**
+  - Server component.
+  - Injects `page.customCode` as raw HTML (e.g. analytics or tracking snippets).
 
-Props:
-- `breaseImage: BreaseMedia` - The image data from Brease
-- `className?: string` - Optional CSS class
+- **`<BreaseImage breaseImage>`**
+  - Renders optimized images based on Brease media variants.
 
-#### `<BreaseContext>`
-Server component that fetches and provides navigation and collection data.
-
-Props:
-- `config: BreaseContextConfig` - Configuration for navigations and collections to fetch
-- `children: ReactNode` - Child components
+- **`<BreaseContext config slug getPage?>`**
+  - Server component.
+  - Accepts `config` (navigations, collections, userParams), `slug` (current page slug, optionally with locale prefix), and optional `getPage` (e.g. `cache(fetchPage)`) so the context, generateMetadata and page share one request.
+  - Derives locale from the slug, fetches navigations, collections, locales, and the page (via `getPage(slug)` or `fetchPage(slug)`) to extract alternateLinks and references; provides to client components: navigations, collections, availableLocales, locale, userParams, pageSlug, alternateLinks, references (not the full page).
 
 ### Hooks
 
 #### `useBrease()`
-Access navigation and collection data in client components. Must be used within a `BreaseContext`.
 
-Returns:
-```typescript
-{
-  navigations: Record<string, BreaseNavigation>;
-  collections: Record<string, BreaseCollection>;
+Client hook (must be used inside `BreaseContext`):
+
+```ts
+const {
+  navigations,
+  collections,
+  availableLocales,
+  locale,
+  userParams,
+  pageSlug,
+  alternateLinks, // Record<string, string> — locale → URL for language selector
+  references, // object[] — from the current page
+  setAlternateLinks,
+} = useBrease();
+```
+
+### SEO helpers
+
+- **`generateBreasePageMetadata(page, options?)`**
+  - Generates a Next.js `Metadata` object from a `BreasePage`.
+  - Reads:
+    - `metaTitle`, `metaDescription`
+    - `openGraph` (title, description, url, image, type)
+    - `twitterCard`
+    - `canonicalUrl`
+    - `alternateLinks`
+    - `indexing` (sets `robots: { index: false, follow: false }` when false)
+  - `options.metadataBase` is used as `metadata.metadataBase` to resolve relative URLs.
+
+- **`generateBreaseRobots(siteUrl, options?)`**
+  - Generates `MetadataRoute.Robots` for `app/robots.ts`.
+  - Defaults:
+    - `rules: { userAgent: "*", allow: "/" }`
+    - `sitemap: "${siteUrl}/sitemap.xml"`
+  - Optionally override `rules`, `sitemap`, `host` using `GenerateBreaseRobotsOptions`.
+
+## Error Handling
+
+Always check `success` before using `data`:
+
+```tsx
+import { fetchPage } from "brease-next";
+
+export default async function Page() {
+  const result = await fetchPage("about");
+
+  if (!result.success) {
+    console.error("Failed to fetch page:", result.error);
+    return <div>Error loading page</div>;
+  }
+
+  const page = result.data;
+  // render with <BreasePage />
 }
 ```
+
+Common causes of errors:
+
+- Missing env vars (`BREASE_BASE_URL`, `BREASE_TOKEN`, `BREASE_ENV`, `BREASE_DEFAULT_LOCALE`)
+- Network/API outages
+- 404 (page/collection not found)
+- 401 (invalid token)
+
+For stricter flows, you can wrap your own `ensureSuccess` around `BreaseResponse<T>` and throw for non-success.
 
 ## Development
 
@@ -313,7 +444,7 @@ Returns:
 npm run build
 ```
 
-This will generate both CommonJS and ESM builds with TypeScript declarations in the `dist/` folder.
+This generates ESM builds plus TypeScript declarations in `dist/`.
 
 ### Watch Mode
 
@@ -323,71 +454,62 @@ npm run dev
 
 ## TypeScript Support
 
-This package includes full TypeScript type definitions. All types are exported and can be imported:
+This package ships full TypeScript types. Example:
 
-```typescript
+```ts
 import type {
-  BreasePage,
+  BreasePageType,
   BreaseSection,
   BreaseMedia,
   BreaseNavigation,
-  BreaseResponse
-} from 'brease-next';
+  BreaseCollection,
+  BreaseResponse,
+} from "brease-next";
 ```
 
 ## Publishing & Releases
 
-This package uses automated GitHub Actions workflows for publishing to npm and creating releases.
+This package uses GitHub Actions to build and publish to npm.
 
 ### Setup Requirements
 
-Before creating your first release, you need to add an npm token to your GitHub repository:
-
 1. Generate an npm token with **Automation** or **Publish** permissions at [npmjs.com/settings/tokens](https://www.npmjs.com/settings/tokens)
 2. Add it as a secret named `NPM_TOKEN` in your GitHub repository settings:
-   - Go to **Settings** → **Secrets and variables** → **Actions**
+   - Go to **Settings → Secrets and variables → Actions**
    - Click **New repository secret**
    - Name: `NPM_TOKEN`
-   - Value: Your npm token
+   - Value: your npm token
 
 ### Creating a Release
 
-To publish a new version to npm and create a GitHub release:
+1. Update the version in `package.json`:
 
-1. **Update the version** in `package.json`:
    ```bash
-   npm version patch  # For bug fixes (0.1.0 → 0.1.1)
-   npm version minor  # For new features (0.1.0 → 0.2.0)
-   npm version major  # For breaking changes (0.1.0 → 1.0.0)
+   npm version patch  # Bug fixes (0.1.0 → 0.1.1)
+   npm version minor  # New features (0.1.0 → 0.2.0)
+   npm version major  # Breaking changes (0.1.0 → 1.0.0)
    ```
 
-2. **Update CHANGELOG.md** with the new version and changes
+2. Update `CHANGELOG.md` with changes
+3. Commit your changes:
 
-3. **Commit the changes**:
    ```bash
    git add .
-   git commit -m "chore: release v0.1.1"
+   git commit -m "chore: release vX.Y.Z"
    ```
 
-4. **Push with tags**:
+4. Push with tags:
+
    ```bash
    git push && git push --tags
    ```
 
-The GitHub Actions workflow will automatically:
-- ✅ Run code quality checks (ESLint, Prettier)
-- ✅ Build the package
-- ✅ Publish to npm with provenance attestation
-- ✅ Create a GitHub release with changelog content
+The CI workflow will:
 
-### Continuous Integration
-
-Every push to `main` and all pull requests automatically run:
-- ESLint checks
-- Prettier formatting verification
-- Build verification on Node.js 16, 18, and 20
-
-The CI status is visible in the badge at the top of this README.
+- Run ESLint and Prettier checks
+- Build the package
+- Publish to npm
+- Create a GitHub release
 
 ## License
 
