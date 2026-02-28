@@ -47,9 +47,6 @@ export function validateBreaseConfig(): BreaseConfig {
   if (!token) missingVars.push("BREASE_TOKEN");
   if (!env) missingVars.push("BREASE_ENV");
   if (!defaultLocale) missingVars.push("BREASE_DEFAULT_LOCALE");
-  if (Number.isNaN(revalidationTime) || revalidationTime < 0) {
-    missingVars.push("BREASE_REVALIDATION_TIME");
-  }
 
   if (missingVars.length > 0) {
     throw new Error(
@@ -91,13 +88,9 @@ const getSiteUrl = (): string => {
   return `${config.baseUrl}`;
 };
 
-const getPageUrl = (
-  pageSlug: string,
-  locale?: string,
-  metaOnly?: boolean,
-): string => {
+const getPageUrl = (pageSlug: string, locale?: string): string => {
   const config = getConfig();
-  return `${config.baseUrl}/environments/${config.env}/page?locale=${locale || config.defaultLocale}&slug=${ensureLeadingSlash(pageSlug)}${metaOnly ? `&metaOnly=true` : ""}`;
+  return `${config.baseUrl}/environments/${config.env}/page?locale=${locale || config.defaultLocale}&slug=${ensureLeadingSlash(pageSlug)}`;
 };
 
 const getAlternateLinksUrl = (pageSlug: string): string => {
@@ -261,9 +254,7 @@ export async function fetchSite(): Promise<BreaseResponse<BreaseSite>> {
 /**
  * Fetches a specific page by its slug from Brease CMS.
  *
- * @param pageSlug - The slug of the page to fetch
- * @param locale - Optional locale override (defaults to config locale)
- * @param metaOnly - Optional param to fetch only metadata fields
+ * @param pageSlug - The slug of the page to fetch (may include locale prefix)
  * @returns Promise resolving to BreaseResponse containing page data with sections, metadata and additionalFields
  * @example
  * ```typescript
@@ -282,7 +273,8 @@ function isLocaleCode(segment: string): boolean {
   // Basic locale patterns like "en" or "en-US"
   return /^[a-z]{2}(-[A-Z]{2})?$/.test(segment);
 }
-function parseSlugAndLocale(pageSlug: string): {
+
+export function parseSlugAndLocale(pageSlug: string): {
   slug: string;
   locale: string;
 } {
@@ -301,11 +293,10 @@ function parseSlugAndLocale(pageSlug: string): {
 
 export async function fetchPage(
   pageSlug: string,
-  metaOnly?: boolean,
 ): Promise<BreaseResponse<BreasePage>> {
   const { slug, locale } = parseSlugAndLocale(pageSlug);
   return handleBreaseFetch(
-    getPageUrl(slug, locale, metaOnly),
+    getPageUrl(slug, locale),
     (json) => json.data.page as BreasePage,
   );
 }
@@ -506,54 +497,35 @@ export async function fetchLocales(): Promise<BreaseResponse<BreaseLocale[]>> {
  * Generates Next.js metadata for a page based on Brease CMS data.
  * Includes SEO metadata, Open Graph tags, and robots directives.
  *
- * @param pageSlug - The slug of the page to generate metadata for
- * @param locale - Optional locale override (defaults to config locale)
- * @returns Promise resolving to Next.js Metadata object
+ * @param page - The page object returned by Brease CMS
+ * @param options - Optional configuration (e.g. metadataBase for resolving relative URLs)
+ * @returns Next.js Metadata object
+ *
  * @example
  * ```typescript
- * export async function generateMetadata({ params }: { params: { slug: string } }) {
- *   return await generateBreasePageMetadata(params.slug);
+ * export async function generateMetadata({ params }: { params: { slug: string[] } }) {
+ *   const result = await getPage(params.slug.join('/'));
+ *   if (!result.success) return {};
+ *   return generateBreasePageMetadata(result.data, {
+ *     metadataBase: 'https://example.com',
+ *   });
  * }
  * ```
  */
-export async function generateBreasePageMetadata(
-  pageResult: BreasePage,
-): Promise<Metadata> {
-  const page = pageResult as BreasePage;
+export function generateBreasePageMetadata(
+  page: BreasePage,
+  options?: { metadataBase?: string | URL },
+): Metadata {
+  const metadata: Metadata = {};
 
-  //const alternatesResult = await fetchAlternateLinks(pageSlug);
-  //let alternates = {} as Languages<string | URL | AlternateLinkDescriptor[] | null>;
+  if (options?.metadataBase) {
+    metadata.metadataBase = new URL(options.metadataBase);
+  }
 
-  /*if (!pageResult.success) {
-    if (pageResult.status === 404)
-      throw new BreaseFetchError(pageResult.error, pageResult.status, pageResult.endpoint);
-  } else {
-    page = pageResult.data;
-  }*/
-
-  /*if (!alternatesResult.success) {
-    if (alternatesResult.status === 404)
-      throw new BreaseFetchError(
-        alternatesResult.error,
-        alternatesResult.status,
-        alternatesResult.endpoint
-      );
-  } else {
-    alternates = alternatesResult.data;
-  }*/
-
-  const metadata: Metadata = {
-    title: page.metaTitle || page.name || undefined,
-  };
+  metadata.title = page.metaTitle || page.name || undefined;
 
   if (page.metaDescription) {
     metadata.description = page.metaDescription;
-  }
-
-  if (page.canonicalUrl) {
-    metadata.alternates = {
-      canonical: page.canonicalUrl,
-    };
   }
 
   if (!page.indexing) {
@@ -563,50 +535,129 @@ export async function generateBreasePageMetadata(
     };
   }
 
-  /*if (alternates && Object.keys(alternates).length > 0) {
-    metadata.alternates = {
-      ...metadata.alternates,
-      languages: alternates,
+  const alternates: Metadata["alternates"] = {};
+  if (page.canonicalUrl) {
+    alternates.canonical = page.canonicalUrl;
+  }
+  if (page.alternateLinks && Object.keys(page.alternateLinks).length > 0) {
+    alternates.languages = page.alternateLinks;
+  }
+  if (Object.keys(alternates).length > 0) {
+    metadata.alternates = alternates;
+  }
+
+  const ogTitle =
+    page.openGraph?.title || page.metaTitle || page.name || undefined;
+  const ogDescription =
+    page.openGraph?.description || page.metaDescription || undefined;
+  const ogImage = page.openGraph?.image || undefined;
+
+  if (ogTitle || ogDescription || ogImage) {
+    metadata.openGraph = {
+      title: ogTitle,
+      description: ogDescription,
+      type: (page.openGraph?.type as "website" | "article") || "website",
+      url: page.openGraph?.url || undefined,
+      images: ogImage ? [{ url: ogImage }] : undefined,
     };
-  }*/
+  }
 
-  metadata.openGraph = {
-    title: page?.openGraph?.title || page?.metaTitle || page?.name || undefined,
-    description:
-      page?.openGraph?.description || page?.metaDescription || undefined,
-    type: (page?.openGraph?.type as "website" | "article") || "website",
-    url: page?.openGraph?.url || undefined,
-    images: page?.openGraph?.image
-      ? [
-          {
-            url: page?.openGraph?.image,
-          },
-        ]
-      : undefined,
-  };
+  const twitterTitle =
+    page.twitterCard?.title || page.metaTitle || page.name || undefined;
+  const twitterDescription =
+    page.twitterCard?.description || page.metaDescription || undefined;
+  const twitterImage = page.twitterCard?.image || ogImage;
 
-  metadata.twitter = {
-    creator: page?.twitterCard?.creator || undefined,
-    site: page?.twitterCard?.site || undefined,
-    card: page?.twitterCard?.type as
-      | "summary"
-      | "summary_large_image"
-      | "player"
-      | "app",
-    title:
-      page?.twitterCard?.title || page?.metaTitle || page?.name || undefined,
-    images: page?.openGraph?.image
-      ? [
-          {
-            url: page?.openGraph?.image,
-          },
-        ]
-      : undefined,
-    description:
-      page?.twitterCard?.description || page?.metaDescription || undefined,
-  };
+  if (twitterTitle || twitterDescription || twitterImage) {
+    metadata.twitter = {
+      card:
+        (page.twitterCard?.type as
+          | "summary"
+          | "summary_large_image"
+          | "player"
+          | "app") || "summary_large_image",
+      title: twitterTitle,
+      description: twitterDescription,
+      creator: page.twitterCard?.creator || undefined,
+      site: page.twitterCard?.site || undefined,
+      images: twitterImage ? [{ url: twitterImage }] : undefined,
+    };
+  }
 
   return metadata;
+}
+
+/**
+ * Options to customize the generated robots.txt.
+ * All fields are optional; defaults are used when omitted.
+ */
+export interface GenerateBreaseRobotsOptions {
+  /**
+   * Crawler rules. Default: `{ userAgent: "*", allow: "/" }`.
+   * Can be a single rule object or an array for multiple user agents.
+   */
+  rules?:
+    | {
+        userAgent?: string | string[];
+        allow?: string | string[];
+        disallow?: string | string[];
+      }
+    | Array<{
+        userAgent: string | string[];
+        allow?: string | string[];
+        disallow?: string | string[];
+      }>;
+  /**
+   * Sitemap URL(s). Default: `"{siteUrl}/sitemap.xml"`.
+   */
+  sitemap?: string | string[];
+  /**
+   * Canonical host (e.g. "https://example.com").
+   */
+  host?: string;
+}
+
+/**
+ * Generates a robots.txt configuration for Next.js.
+ *
+ * @param siteUrl - The canonical site URL (e.g., "https://example.com"), used for the default sitemap when not overridden
+ * @param options - Optional overrides for rules, sitemap, and host
+ * @returns MetadataRoute.Robots object for use in app/robots.ts
+ *
+ * @example
+ * // Default: allow all, single sitemap
+ * return generateBreaseRobots("https://example.com");
+ *
+ * @example
+ * // Disallow /admin, custom sitemap path
+ * return generateBreaseRobots("https://example.com", {
+ *   rules: { userAgent: "*", allow: "/", disallow: "/admin/" },
+ *   sitemap: "https://example.com/sitemap.xml",
+ * });
+ *
+ * @example
+ * // Multiple rules and sitemaps
+ * return generateBreaseRobots("https://example.com", {
+ *   rules: [
+ *     { userAgent: "*", allow: "/", disallow: "/api/" },
+ *     { userAgent: "Googlebot", allow: "/" },
+ *   ],
+ *   sitemap: ["https://example.com/sitemap.xml", "https://example.com/sitemap-blog.xml"],
+ *   host: "https://example.com",
+ * });
+ */
+export function generateBreaseRobots(
+  siteUrl: string,
+  options?: GenerateBreaseRobotsOptions,
+): MetadataRoute.Robots {
+  const sitemap =
+    options?.sitemap ?? `${siteUrl.replace(/\/$/, "")}/sitemap.xml`;
+  const rules = options?.rules ?? { userAgent: "*", allow: "/" };
+  const result: MetadataRoute.Robots = { rules, sitemap };
+  if (options?.host != null) {
+    result.host = options.host;
+  }
+  return result;
 }
 
 /**

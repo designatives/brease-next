@@ -1,7 +1,18 @@
-import { ReactNode } from 'react';
-import { BreaseClientProvider } from './client-provider.js';
-import { fetchNavigation, fetchCollectionById, fetchLocales } from './api.js';
-import type { BreaseNavigation, BreaseCollection } from './types.js';
+import { ReactNode } from "react";
+import { BreaseClientProvider } from "./client-provider.js";
+import {
+  fetchNavigation,
+  fetchCollectionById,
+  fetchLocales,
+  fetchPage,
+  parseSlugAndLocale,
+} from "./api.js";
+import type {
+  BreaseNavigation,
+  BreaseCollection,
+  BreasePage,
+  BreaseResponse,
+} from "./types.js";
 
 export interface BreaseContextConfig {
   navigations: Array<{ key: string; id: string }>;
@@ -9,10 +20,26 @@ export interface BreaseContextConfig {
   userParams: any;
 }
 
+/** Cached page fetcher; use React cache(fetchPage) so layout, metadata and page share one request. */
+export type BreaseGetPage = (
+  slug: string,
+) => Promise<BreaseResponse<BreasePage>>;
+
 interface BreaseContextProps {
   children: ReactNode;
   config: BreaseContextConfig;
-  locale: string;
+  /**
+   * Page slug for the current route.
+   * May include an optional locale prefix (e.g. "en/about-us").
+   * Locale will be derived from this slug using the same logic as the page API.
+   */
+  slug: string;
+  /**
+   * Optional cached page fetcher (e.g. cache(fetchPage)).
+   * When provided, the context uses it instead of fetchPage so the same cache
+   * can be used in generateMetadata and the page component for a single request per slug.
+   */
+  getPage?: BreaseGetPage;
 }
 
 /**
@@ -24,9 +51,10 @@ interface BreaseContextProps {
  *
  * @example
  * ```tsx
- * // app/[locale]/layout.tsx (Server Component)
- * export default async function LocaleLayout({ children, params }) {
- *   const { locale } = await params;
+ * // app/[[...slug]]/layout.tsx (Server Component)
+ * export default async function SlugLayout({ children, params }) {
+ *   const { slug } = await params;
+ *   const slugStr = (slug ?? []).join('/');
  *   return (
  *     <BreaseContext
  *       config={{
@@ -34,7 +62,7 @@ interface BreaseContextProps {
  *         collections: [{ key: 'posts', id: 'collection-id' }]
  *         userParams: { theme: 'dark' }
  *       }}
- *       locale={locale}
+ *       slug={slugStr}
  *     >
  *       {children}
  *     </BreaseContext>
@@ -42,7 +70,13 @@ interface BreaseContextProps {
  * }
  * ```
  */
-export default async function BreaseContext({ children, config, locale }: BreaseContextProps) {
+export default async function BreaseContext({
+  children,
+  config,
+  slug,
+  getPage,
+}: BreaseContextProps) {
+  const { locale } = parseSlugAndLocale(slug);
   const localesResult = await fetchLocales();
   const availableLocales = [] as string[];
   if (localesResult.success) {
@@ -57,7 +91,7 @@ export default async function BreaseContext({ children, config, locale }: Brease
     config.navigations.map(async (nav) => ({
       key: nav.key,
       result: await fetchNavigation(nav.id, locale),
-    }))
+    })),
   );
 
   const navigations: Record<string, BreaseNavigation> = {};
@@ -69,12 +103,27 @@ export default async function BreaseContext({ children, config, locale }: Brease
     }
   });
 
+  const fetchPageForContext = getPage ?? fetchPage;
+  const pageResult = await fetchPageForContext(slug);
+  let page = {} as BreasePage;
+  let alternateLinks: Record<string, string> = {};
+  let references: object[] = [];
+  let parentSlug: string = "";
+  if (pageResult.success) {
+    page = pageResult.data;
+    if (page.alternateLinks) alternateLinks = page.alternateLinks;
+    if (page.references) references = page.references;
+    if (page.parentPageSlug) parentSlug = page.parentPageSlug;
+  } else {
+    console.error(`Failed to load page for slug '${slug}':`, pageResult.error);
+  }
+
   if (config.collections) {
     const collectionResults = await Promise.all(
       config.collections.map(async (col) => ({
         key: col.key,
         result: await fetchCollectionById(col.id, locale),
-      }))
+      })),
     );
 
     const collections: Record<string, BreaseCollection> = {};
@@ -92,9 +141,18 @@ export default async function BreaseContext({ children, config, locale }: Brease
       collections,
       locale,
       userParams: config.userParams,
+      pageSlug: slug,
+      page,
+      parentSlug,
+      alternateLinks,
+      references,
     };
 
-    return <BreaseClientProvider brease={breaseData}>{children}</BreaseClientProvider>;
+    return (
+      <BreaseClientProvider brease={breaseData}>
+        {children}
+      </BreaseClientProvider>
+    );
   } else {
     const breaseData = {
       navigations,
@@ -102,8 +160,17 @@ export default async function BreaseContext({ children, config, locale }: Brease
       collections: undefined,
       locale,
       userParams: config.userParams,
+      pageSlug: slug,
+      page,
+      parentSlug,
+      alternateLinks,
+      references,
     };
 
-    return <BreaseClientProvider brease={breaseData}>{children}</BreaseClientProvider>;
+    return (
+      <BreaseClientProvider brease={breaseData}>
+        {children}
+      </BreaseClientProvider>
+    );
   }
 }

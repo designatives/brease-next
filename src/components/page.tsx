@@ -1,61 +1,59 @@
-import React from 'react';
-import type { BreasePage, BreasePage as BreasePageType } from '../types.js';
-import SectionToolbar from './section-toolbar.js';
+import React from "react";
+import type { BreasePage as BreasePageType } from "../types.js";
+import SectionToolbar from "./section-toolbar.js";
 
 interface BreasePageProps {
   page: BreasePageType;
   sectionMap: Record<string, React.ComponentType<Record<string, unknown>>>;
 }
 
+interface FilteredSection {
+  component: React.ComponentType<Record<string, unknown>>;
+  page_section_uuid: string;
+  section_uuid: string;
+  name: string;
+  key: string;
+  uuid: string;
+  elements: Record<string, unknown>;
+  data: Record<string, unknown>;
+}
+
 /**
  * Renders a Brease page by mapping its sections to components from sectionMap.
- * Also handles Brease App preview display.
- *
- * @param page - Brease page data
- * @param sectionMap - Map of section type strings to React components
+ * Preview toolbar visibility is handled inside SectionToolbar.
  */
 export default function BreasePage({ page, sectionMap }: BreasePageProps) {
   const sections = filterSections(page, sectionMap);
-  const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
-  return sections?.map((section: any, index: number) => {
-    if (section) {
-      if (isInIframe) {
-        return React.createElement(
-          'section',
-          {
-            key: index,
-            id: section.page_section_uuid,
-            className: 'brease-section',
-          },
-          React.createElement(SectionToolbar, { data: section }),
-          React.createElement('div', {
-            className: 'brease-preview-overlay',
-          }),
-          React.createElement(section.component, section.data)
-        );
-      } else {
-        return React.createElement(
-          'section',
-          {
-            key: index,
-            id: section.page_section_uuid,
-            className: 'brease-section',
-          },
-          React.createElement(section.component, section.data)
-        );
-      }
-    }
+
+  return sections?.map((section, index) => {
+    if (!section) return null;
+    return (
+      <section
+        key={index}
+        id={section.page_section_uuid}
+        className="brease-section"
+      >
+        <SectionToolbar data={section} />
+        {React.createElement(section.component, section.data)}
+      </section>
+    );
   });
 }
 
-function filterSections(page: BreasePage, componentMap: Record<string, React.ComponentType<any>>) {
+function filterSections(
+  page: BreasePageType,
+  componentMap: Record<string, React.ComponentType<Record<string, unknown>>>,
+): (FilteredSection | null)[] {
   return page.sections.map((section) => {
-    if (componentMap[section.type]) {
+    if (componentMap[section.key]) {
       return {
-        component: componentMap[section.type],
+        component: componentMap[section.key],
         page_section_uuid: section.page_section_uuid,
         section_uuid: section.uuid,
         name: section.name,
+        key: section.key,
+        uuid: section.uuid,
+        elements: section.elements,
         data: section.elements,
       };
     }

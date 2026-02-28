@@ -1,7 +1,7 @@
 export interface BreaseSection {
   name: string;
   page_section_uuid: string;
-  type: string;
+  key: string;
   uuid: string;
   elements: SectionElementProps;
 }
@@ -35,14 +35,16 @@ export interface BreaseMediaVariant {
   width: number;
 }
 
-export interface BreaseNavigationItem {
-  uuid: string;
-  value: string;
-  type: string;
-  url: string | null;
-  target: BreasePage | null;
-  children: BreaseNavigationItem[];
+export interface BreaseLinkData {
+  label: string;
   isExternal: boolean;
+  value: string;
+  target: "_blank" | "_self" | null;
+}
+
+export interface BreaseNavigationItem extends BreaseLinkData {
+  uuid: string;
+  children: BreaseNavigationItem[];
 }
 
 export interface BreaseNavigation {
@@ -78,8 +80,10 @@ export interface BreasePage {
   canonicalUrl: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
+  references: object[] | null;
+  alternateLinks: Record<string, string> | null;
+  parentPageSlug: string;
   sections: BreaseSection[];
-  additionalFields: object[] | null;
 }
 
 export interface BreaseSite {
@@ -134,7 +138,7 @@ export interface BreaseRedirect {
   uuid: string;
   source: string;
   destination: string;
-  type: '301' | '302' | '307' | '308';
+  type: "301" | "302" | "307" | "308";
 }
 
 export interface BreaseLocale {

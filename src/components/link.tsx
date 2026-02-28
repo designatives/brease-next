@@ -1,21 +1,15 @@
-import Link from 'next/link';
-import type { ComponentProps, ReactNode } from 'react';
+import Link from "next/link";
+import type { ComponentProps, ReactNode } from "react";
+import { BreaseLinkData } from "../types";
 
-export type BreaseLinkData = {
-  label: string;
-  isExternal: boolean;
-  value: string;
-  target: '_blank' | 'self' | null;
-};
-
-type AnchorProps = ComponentProps<'a'>;
+type AnchorProps = ComponentProps<"a">;
 type NextLinkProps = ComponentProps<typeof Link>;
 
 type BreaseLinkProps = {
   linkData: BreaseLinkData;
   children: ReactNode;
-} & Omit<AnchorProps, 'href' | 'title'> &
-  Omit<NextLinkProps, 'href' | 'title'>;
+} & Omit<AnchorProps, "href" | "title"> &
+  Omit<NextLinkProps, "href" | "title">;
 
 /**
  * Renders a link from Brease link data. Uses Next.js Link for internal URLs
@@ -26,7 +20,7 @@ type BreaseLinkProps = {
  * @param rest - Additional anchor/Link attributes (e.g. className)
  */
 export function BreaseLink({ linkData, children, ...rest }: BreaseLinkProps) {
-  const target = linkData.target === '_blank' ? '_blank' : undefined;
+  const target = linkData.target === "_blank" ? "_blank" : undefined;
 
   if (linkData.isExternal) {
     return (
@@ -34,7 +28,7 @@ export function BreaseLink({ linkData, children, ...rest }: BreaseLinkProps) {
         title={linkData.label}
         href={linkData.value}
         target={target}
-        rel={target === '_blank' ? 'noopener noreferrer' : undefined}
+        rel={target === "_blank" ? "noopener noreferrer" : undefined}
         {...rest}
       >
         {children}
@@ -43,7 +37,12 @@ export function BreaseLink({ linkData, children, ...rest }: BreaseLinkProps) {
   }
 
   return (
-    <Link href={linkData.value} title={linkData.label} target={target} {...rest}>
+    <Link
+      href={linkData.value}
+      title={linkData.label}
+      target={target}
+      {...rest}
+    >
       {children}
     </Link>
   );
