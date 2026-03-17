@@ -36,6 +36,7 @@ export function validateBreaseConfig(): BreaseConfig {
   const token = process.env.BREASE_TOKEN;
   const env = process.env.BREASE_ENV;
   const defaultLocale = process.env.BREASE_DEFAULT_LOCALE;
+  const cacheModeRaw = process.env.BREASE_CACHE_MODE;
 
   const revalidationTimeRaw = process.env.BREASE_REVALIDATION_TIME;
   const revalidationTime =
@@ -47,10 +48,17 @@ export function validateBreaseConfig(): BreaseConfig {
   if (!token) missingVars.push("BREASE_TOKEN");
   if (!env) missingVars.push("BREASE_ENV");
   if (!defaultLocale) missingVars.push("BREASE_DEFAULT_LOCALE");
+  if (!cacheModeRaw) missingVars.push("BREASE_CACHE_MODE");
 
   if (missingVars.length > 0) {
     throw new Error(
       `Missing required Brease configuration. Please set the following environment variables: ${missingVars.join(", ")}`,
+    );
+  }
+
+  if (cacheModeRaw !== "no-store" && cacheModeRaw !== "isr") {
+    throw new Error(
+      `Invalid BREASE_CACHE_MODE value "${cacheModeRaw}". Must be "no-store" or "isr".`,
     );
   }
 
@@ -60,6 +68,7 @@ export function validateBreaseConfig(): BreaseConfig {
     env: env!,
     defaultLocale: defaultLocale!,
     revalidationTime,
+    cacheMode: cacheModeRaw,
   };
 }
 
@@ -121,22 +130,11 @@ const getSitemapUrl = (): string => {
 const getFetchParams = (): RequestInit => {
   const config = getConfig();
 
-  const isLocalLikeEnv = ["develop", "preview", "local"].includes(
-    (config.env || "").toLowerCase(),
-  );
-  const disableRevalidate = config.revalidationTime === 0 || isLocalLikeEnv;
-
   return {
     method: "GET",
-    ...(disableRevalidate // TODO: need to handle
-      ? {
-          // Always reflect latest API changes in develop/preview/local or when time is 0
-          cache: "no-store",
-        }
-      : {
-          // Enable ISR-style revalidation for other environments
-          next: { revalidate: config.revalidationTime },
-        }),
+    ...(config.cacheMode === "no-store"
+      ? { cache: "no-store" }
+      : { next: { revalidate: config.revalidationTime } }),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${config.token}`,

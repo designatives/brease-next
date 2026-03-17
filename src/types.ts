@@ -117,6 +117,7 @@ export interface BreaseConfig {
   env: string;
   defaultLocale: string;
   revalidationTime: number;
+  cacheMode: "no-store" | "isr";
 }
 
 export interface BreaseCollectionEntry {
