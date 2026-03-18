@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import type { BreasePage as BreasePageType } from "../types.js";
+import { useBreaseContext } from "../client-provider.js";
 import SectionToolbar from "./section-toolbar.js";
 
 interface BreasePageProps {
@@ -20,9 +23,15 @@ interface FilteredSection {
 
 /**
  * Renders a Brease page by mapping its sections to components from sectionMap.
- * Preview toolbar visibility is handled inside SectionToolbar.
+ * Uses page from context (updated by preview listener) when available,
+ * falls back to the prop for backwards compatibility.
  */
-export default function BreasePage({ page, sectionMap }: BreasePageProps) {
+export default function BreasePage({
+  page: pageProp,
+  sectionMap,
+}: BreasePageProps) {
+  const context = useBreaseContext();
+  const page = context.page ?? pageProp;
   const sections = filterSections(page, sectionMap);
 
   return sections?.map((section, index) => {

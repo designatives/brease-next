@@ -1,7 +1,14 @@
 "use client";
 
 import React from "react";
-import { BreaseSection } from "../types";
+import type { BreaseSection } from "../types.js";
+import type { BreasePreviewChildMessage } from "../preview-types.js";
+
+function sendToParent(message: BreasePreviewChildMessage): void {
+  if (typeof window === "undefined") return;
+  const target = window.parent || window;
+  target.postMessage(message, "*");
+}
 
 export function SectionToolbar({ data }: { data: BreaseSection }) {
   const [isInIframe, setIsInIframe] = React.useState(false);
@@ -31,46 +38,19 @@ export function SectionToolbar({ data }: { data: BreaseSection }) {
   );
 }
 
-interface BreaseEditButtonProps {
-  id: string;
-}
-
-function BreaseAction(action: string, data: any) {
-  if (typeof window === "undefined") return;
-  const target = window.parent || window;
-  target.postMessage(
-    {
-      action,
-      data: {
-        ...data,
+const BreaseEditButton = ({ id }: { id: string }) => {
+  const handleClick = React.useCallback(() => {
+    sendToParent({
+      type: "brease:edit-section",
+      payload: {
+        uuid: id,
         scrollY: window.scrollY,
       },
-    },
-    "*",
-  );
-}
-
-const BreaseEditButton = ({ id }: BreaseEditButtonProps) => {
-  const buttonRef = React.useRef<HTMLButtonElement>(null);
-
-  React.useEffect(() => {
-    const handleClick = () => {
-      BreaseAction("BreaseEditSection", { uuid: id });
-    };
-
-    const button = buttonRef.current;
-    if (button) {
-      button.addEventListener("click", handleClick);
-    }
-
-    return () => {
-      if (button) {
-        button.removeEventListener("click", handleClick);
-      }
-    };
+    });
   }, [id]);
+
   return (
-    <button ref={buttonRef} className={"brease-edit-button"}>
+    <button onClick={handleClick} className={"brease-edit-button"}>
       Edit
     </button>
   );

@@ -5,6 +5,7 @@ import {
   ReactNode,
   useCallback,
   useContext,
+  useMemo,
   useState,
 } from "react";
 import type {
@@ -12,6 +13,7 @@ import type {
   BreaseNavigation,
   BreasePage,
 } from "./types.js";
+import { BreasePreviewListener } from "./preview-listener.js";
 
 export interface BreaseContextData {
   navigations: Record<string, BreaseNavigation>;
@@ -26,7 +28,14 @@ export interface BreaseContextData {
   setAlternateLinks: (links: Record<string, string>) => void;
 }
 
+export interface PreviewSetters {
+  setPage: (page: BreasePage) => void;
+}
+
 const DataContext = createContext<BreaseContextData | undefined>(undefined);
+export const PreviewSettersContext = createContext<PreviewSetters | undefined>(
+  undefined,
+);
 
 /**
  * Client-side provider component that wraps children with Brease context.
@@ -40,19 +49,29 @@ export function BreaseClientProvider({
   children: ReactNode;
   brease: Omit<BreaseContextData, "setAlternateLinks">;
 }) {
+  const [page, setPageState] = useState<BreasePage>(brease.page);
   const [alternateLinks, setAlternateLinksState] = useState<
     Record<string, string>
   >(brease.alternateLinks);
+
+  const setPage = useCallback((p: BreasePage) => {
+    setPageState(p);
+  }, []);
   const setAlternateLinks = useCallback((links: Record<string, string>) => {
     setAlternateLinksState(links);
   }, []);
 
+  const previewSetters = useMemo(() => ({ setPage }), [setPage]);
+
   return (
-    <DataContext.Provider
-      value={{ ...brease, alternateLinks, setAlternateLinks }}
-    >
-      {children}
-    </DataContext.Provider>
+    <PreviewSettersContext.Provider value={previewSetters}>
+      <DataContext.Provider
+        value={{ ...brease, page, alternateLinks, setAlternateLinks }}
+      >
+        <BreasePreviewListener />
+        {children}
+      </DataContext.Provider>
+    </PreviewSettersContext.Provider>
   );
 }
 
