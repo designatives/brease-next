@@ -2,9 +2,9 @@ export class BreaseFetchError extends Error {
   constructor(
     message: string,
     public readonly status: number,
-    public readonly endpoint?: string
+    public readonly endpoint?: string,
   ) {
     super(message);
-    this.name = 'BreaseFetchError';
+    this.name = "BreaseFetchError";
   }
 }

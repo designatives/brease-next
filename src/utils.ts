@@ -1,5 +1,5 @@
-import type { BreaseResponse } from './types.js';
-import { BreaseFetchError } from './errors.js';
+import type { BreaseResponse } from "./types.js";
+import { BreaseFetchError } from "./errors.js";
 
 /**
  * Throws BreaseFetchError on failure, returns data on success.
