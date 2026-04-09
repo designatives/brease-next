@@ -40,8 +40,8 @@ jobs:
       - name: Verify build artifacts
         run: |
           test -f dist/index.js
-          test -f dist/index.cjs
           test -f dist/index.d.ts
+          test -f dist/server.cjs
 
       - name: Publish to npm
         run: npm publish --provenance --access public
