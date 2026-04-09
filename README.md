@@ -28,13 +28,14 @@ BREASE_BASE_URL=https://your-brease-api.com
 BREASE_TOKEN=your_api_token
 BREASE_ENV=your_environment_id
 BREASE_DEFAULT_LOCALE=en          # Default locale code (e.g. 'en')
-BREASE_REVALIDATION_TIME=30      # Cache revalidation time in seconds (ISR). 0 or local env → no-store
+BREASE_CACHE_MODE=isr             # Required: "isr" or "no-store"
+BREASE_REVALIDATION_TIME=30       # Seconds until pages regenerate (only used when BREASE_CACHE_MODE=isr)
 ```
 
-`BREASE_REVALIDATION_TIME` controls Next.js `next: { revalidate }` on all fetches:
+`BREASE_CACHE_MODE` controls how Next.js fetches are cached:
 
-- `0` or local-like envs (`develop`, `preview`, `local`) → `cache: 'no-store'` (always fetch fresh)
-- `> 0` → ISR-style revalidation, pages regenerate after the specified number of seconds
+- `"isr"` → ISR-style revalidation via `next: { revalidate }`, pages regenerate after `BREASE_REVALIDATION_TIME` seconds
+- `"no-store"` → `cache: 'no-store'`, always fetch fresh (suitable for development or preview environments)
 
 ## Styles
 
@@ -238,12 +239,12 @@ export function Header() {
         <ul>
           {nav?.items.map((item) => (
             <li key={item.uuid}>
-              <BreaseLink linkData={item}>{item.value}</BreaseLink>
+              <BreaseLink linkData={item}>{item.label}</BreaseLink>
               {item.children?.length ? (
                 <ul>
                   {item.children.map((child) => (
                     <li key={child.uuid}>
-                      <BreaseLink linkData={child}>{child.value}</BreaseLink>
+                      <BreaseLink linkData={child}>{child.label}</BreaseLink>
                     </li>
                   ))}
                 </ul>
@@ -375,15 +376,16 @@ Client hook (must be used inside `BreaseContext`):
 
 ```ts
 const {
-  navigations,
-  collections,
-  availableLocales,
-  locale,
-  userParams,
-  pageSlug,
-  alternateLinks, // Record<string, string> — locale → URL for language selector
-  references, // object[] — from the current page
-  setAlternateLinks,
+  navigations,           // Record<string, BreaseNavigation>
+  collections,           // Record<string, BreaseCollection> | undefined
+  availableLocales,      // string[]
+  locale,                // string
+  userParams,            // any
+  pageSlug,              // string
+  page,                  // BreasePage — the full page object
+  alternateLinks,        // Record<string, string> — locale → URL for language selector
+  references,            // object[] — from the current page
+  setAlternateLinks,     // (links: Record<string, string>) => void
 } = useBrease();
 ```
 
@@ -429,7 +431,7 @@ export default async function Page() {
 
 Common causes of errors:
 
-- Missing env vars (`BREASE_BASE_URL`, `BREASE_TOKEN`, `BREASE_ENV`, `BREASE_DEFAULT_LOCALE`)
+- Missing env vars (`BREASE_BASE_URL`, `BREASE_TOKEN`, `BREASE_ENV`, `BREASE_DEFAULT_LOCALE`, `BREASE_CACHE_MODE`)
 - Network/API outages
 - 404 (page/collection not found)
 - 401 (invalid token)

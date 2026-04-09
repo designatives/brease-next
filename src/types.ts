@@ -59,7 +59,7 @@ export interface BreasePage {
   slug: string | null;
   uuid: string | null;
   indexing: boolean;
-  variables: string | null;
+  variables: any | null;
   customCode: string | null;
   structuredData: object[] | null;
   openGraph: {
