@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-04-20
+
+### Fixed
+
+- `BreaseClientProvider` now re-syncs its internal `page` and `alternateLinks`
+  state when the server-rendered `brease` prop changes. Previously, because
+  the provider is typically mounted in a persistent App Router `layout.tsx`,
+  `useState` held onto the initial page forever — so navigating between pages
+  re-fetched data on the server but the client UI kept rendering the first
+  page. Preview mode's `setPage` flow still works unchanged.
+
 ## [0.2.0] - 2026-04-09
 
 ### Added

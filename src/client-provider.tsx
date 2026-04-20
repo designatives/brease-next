@@ -54,6 +54,25 @@ export function BreaseClientProvider({
     Record<string, string>
   >(brease.alternateLinks);
 
+  // Track the last prop values so we can re-sync state when the server
+  // provides a new page (e.g. on App Router navigation where the layout — and
+  // therefore this provider — is not remounted). Without this, useState would
+  // keep the initial value forever and navigation would render stale content.
+  // Local state still wins between renders so preview-mode setPage keeps working.
+  const [prevPageProp, setPrevPageProp] = useState<BreasePage>(brease.page);
+  const [prevAlternateLinksProp, setPrevAlternateLinksProp] = useState<
+    Record<string, string>
+  >(brease.alternateLinks);
+
+  if (brease.page !== prevPageProp) {
+    setPrevPageProp(brease.page);
+    setPageState(brease.page);
+  }
+  if (brease.alternateLinks !== prevAlternateLinksProp) {
+    setPrevAlternateLinksProp(brease.alternateLinks);
+    setAlternateLinksState(brease.alternateLinks);
+  }
+
   const setPage = useCallback((p: BreasePage) => {
     setPageState(p);
   }, []);
