@@ -36,7 +36,6 @@ export function validateBreaseConfig(): BreaseConfig {
   const token = process.env.BREASE_TOKEN;
   const env = process.env.BREASE_ENV;
   const defaultLocale = process.env.BREASE_DEFAULT_LOCALE;
-  const cacheModeRaw = process.env.BREASE_CACHE_MODE;
 
   const revalidationTimeRaw = process.env.BREASE_REVALIDATION_TIME;
   const revalidationTime =
@@ -48,17 +47,10 @@ export function validateBreaseConfig(): BreaseConfig {
   if (!token) missingVars.push("BREASE_TOKEN");
   if (!env) missingVars.push("BREASE_ENV");
   if (!defaultLocale) missingVars.push("BREASE_DEFAULT_LOCALE");
-  if (!cacheModeRaw) missingVars.push("BREASE_CACHE_MODE");
 
   if (missingVars.length > 0) {
     throw new Error(
       `Missing required Brease configuration. Please set the following environment variables: ${missingVars.join(", ")}`,
-    );
-  }
-
-  if (cacheModeRaw !== "no-store" && cacheModeRaw !== "isr") {
-    throw new Error(
-      `Invalid BREASE_CACHE_MODE value "${cacheModeRaw}". Must be "no-store" or "isr".`,
     );
   }
 
@@ -68,7 +60,6 @@ export function validateBreaseConfig(): BreaseConfig {
     env: env!,
     defaultLocale: defaultLocale!,
     revalidationTime,
-    cacheMode: cacheModeRaw,
   };
 }
 
@@ -132,9 +123,7 @@ const getFetchParams = (): RequestInit => {
 
   return {
     method: "GET",
-    ...(config.cacheMode === "no-store"
-      ? { cache: "no-store" }
-      : { next: { revalidate: config.revalidationTime } }),
+    next: { revalidate: config.revalidationTime },
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${config.token}`,

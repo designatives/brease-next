@@ -28,14 +28,10 @@ BREASE_BASE_URL=https://your-brease-api.com
 BREASE_TOKEN=your_api_token
 BREASE_ENV=your_environment_id
 BREASE_DEFAULT_LOCALE=en          # Default locale code (e.g. 'en')
-BREASE_CACHE_MODE=isr             # Required: "isr" or "no-store"
-BREASE_REVALIDATION_TIME=30       # Seconds until pages regenerate (only used when BREASE_CACHE_MODE=isr)
+BREASE_REVALIDATION_TIME=30       # Optional: seconds until pages regenerate (defaults to 30)
 ```
 
-`BREASE_CACHE_MODE` controls how Next.js fetches are cached:
-
-- `"isr"` → ISR-style revalidation via `next: { revalidate }`, pages regenerate after `BREASE_REVALIDATION_TIME` seconds
-- `"no-store"` → `cache: 'no-store'`, always fetch fresh (suitable for development or preview environments)
+Brease fetches are cached using Next.js ISR via `next: { revalidate }`. Pages regenerate after `BREASE_REVALIDATION_TIME` seconds (defaults to 30 if not set).
 
 ## Styles
 
@@ -431,7 +427,7 @@ export default async function Page() {
 
 Common causes of errors:
 
-- Missing env vars (`BREASE_BASE_URL`, `BREASE_TOKEN`, `BREASE_ENV`, `BREASE_DEFAULT_LOCALE`, `BREASE_CACHE_MODE`)
+- Missing env vars (`BREASE_BASE_URL`, `BREASE_TOKEN`, `BREASE_ENV`, `BREASE_DEFAULT_LOCALE`)
 - Network/API outages
 - 404 (page/collection not found)
 - 401 (invalid token)
