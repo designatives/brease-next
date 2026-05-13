@@ -24,7 +24,6 @@ npm install brease-next
 Set up the following environment variables in your `.env.local` file:
 
 ```env
-BREASE_BASE_URL=https://your-brease-api.com
 BREASE_TOKEN=your_api_token
 BREASE_ENV=your_environment_id
 BREASE_DEFAULT_LOCALE=en          # Default locale code (e.g. 'en')
@@ -427,7 +426,7 @@ export default async function Page() {
 
 Common causes of errors:
 
-- Missing env vars (`BREASE_BASE_URL`, `BREASE_TOKEN`, `BREASE_ENV`, `BREASE_DEFAULT_LOCALE`)
+- Missing env vars (`BREASE_TOKEN`, `BREASE_ENV`, `BREASE_DEFAULT_LOCALE`)
 - Network/API outages
 - 404 (page/collection not found)
 - 401 (invalid token)

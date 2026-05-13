@@ -31,8 +31,10 @@ import {
  * }
  * ```
  */
+const DEFAULT_BREASE_BASE_URL = "https://api.brease.io";
+
 export function validateBreaseConfig(): BreaseConfig {
-  const baseUrl = process.env.BREASE_BASE_URL;
+  const baseUrl = process.env.BREASE_BASE_URL || DEFAULT_BREASE_BASE_URL;
   const token = process.env.BREASE_TOKEN;
   const env = process.env.BREASE_ENV;
   const defaultLocale = process.env.BREASE_DEFAULT_LOCALE;
@@ -43,7 +45,6 @@ export function validateBreaseConfig(): BreaseConfig {
 
   const missingVars: string[] = [];
 
-  if (!baseUrl) missingVars.push("BREASE_BASE_URL");
   if (!token) missingVars.push("BREASE_TOKEN");
   if (!env) missingVars.push("BREASE_ENV");
   if (!defaultLocale) missingVars.push("BREASE_DEFAULT_LOCALE");
@@ -55,7 +56,7 @@ export function validateBreaseConfig(): BreaseConfig {
   }
 
   return {
-    baseUrl: baseUrl!,
+    baseUrl,
     token: token!,
     env: env!,
     defaultLocale: defaultLocale!,
