@@ -31,7 +31,7 @@ import {
  * }
  * ```
  */
-const DEFAULT_BREASE_BASE_URL = "https://api.brease.io";
+const DEFAULT_BREASE_BASE_URL = "https://api.brease.io/v1";
 
 export function validateBreaseConfig(): BreaseConfig {
   const baseUrl = process.env.BREASE_BASE_URL || DEFAULT_BREASE_BASE_URL;
