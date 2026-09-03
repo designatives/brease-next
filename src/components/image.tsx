@@ -1,4 +1,6 @@
-import Image, { ImageProps } from "next/image";
+"use client";
+
+import Image, { ImageLoaderProps, ImageProps } from "next/image";
 import type { BreaseMedia, BreaseMediaVariant } from "../types.js";
 
 const VARIANT_ORDER = [
@@ -11,34 +13,79 @@ const VARIANT_ORDER = [
   "original",
 ] as const;
 
-function buildSrcSetFromVariants(
-  variants: Record<string, BreaseMediaVariant>,
-): string {
-  const entries = VARIANT_ORDER.filter((key) => variants[key]?.path).map(
-    (key) => {
-      const v = variants[key];
-      return `${v.path} ${v.width}w`;
-    },
-  );
-  return entries.join(", ");
-}
-
 const DEFAULT_SIZES =
   "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1440px) 33vw, 25vw";
 
-type BreaseImageProps = Omit<ImageProps, "src" | "alt" | "srcSet" | "sizes"> & {
+type BreaseImageProps = Omit<
+  ImageProps,
+  "src" | "alt" | "srcSet" | "sizes" | "loader"
+> & {
   breaseImage: BreaseMedia;
-  variant?: "sm" | "md" | "lg" | "xl" | "2xl" | "hd" | "original";
+  variant?: (typeof VARIANT_ORDER)[number];
   alt?: string;
   sizes?: string;
 };
 
 /**
- * Renders a Brease media image using Next.js Image. Supports responsive srcSet from
- * Brease variants when no variant is specified, or a single variant when one is chosen.
+ * Distinct variant files, narrowest first. Brease points every variant at or
+ * above the source width to the same file, so those collapse into one entry.
+ */
+function distinctVariants(
+  variants: Record<string, BreaseMediaVariant>,
+): BreaseMediaVariant[] {
+  const seen = new Set<string>();
+  const list: BreaseMediaVariant[] = [];
+  for (const key of VARIANT_ORDER) {
+    const v = variants[key];
+    if (!v?.path || seen.has(v.path)) continue;
+    seen.add(v.path);
+    list.push(v);
+  }
+  return list.sort((a, b) => a.width - b.width);
+}
+
+/**
+ * next/image loader backed by the pre-rendered Brease variants. For each width
+ * Next asks for, returns the narrowest variant at least that wide, or the
+ * widest one available. `src` is ignored: the variant list has the URLs.
+ */
+function createVariantLoader(variants: BreaseMediaVariant[]) {
+  const widest = variants[variants.length - 1];
+  return ({ width }: ImageLoaderProps): string =>
+    (variants.find((v) => v.width >= width) ?? widest).path;
+}
+
+/**
+ * Props that make next/image build its srcset from the Brease variants.
+ * next/image discards a custom `srcSet` prop, and `unoptimized` would also drop
+ * `sizes`, so the variants have to go in through a `loader`.
+ */
+function variantProps(
+  variants: BreaseMediaVariant[],
+  sizes: string,
+): Partial<ImageProps> {
+  if (variants.length === 1) {
+    // Source narrower than the smallest variant: one file, serve it as-is.
+    return { src: variants[0].path, unoptimized: true };
+  }
+  return {
+    // Seeds the loader (which ignores it) and is what next/image serves as-is
+    // when the app disables optimization globally: the widest downscaled file.
+    src: variants[variants.length - 2].path,
+    loader: createVariantLoader(variants),
+    sizes,
+  };
+}
+
+/**
+ * Renders a Brease media image using Next.js Image. Without a `variant`, the
+ * Brease variants become a responsive srcset driven by `sizes`; with one, that
+ * single variant is rendered.
  *
  * @param breaseImage - Brease media object (path, variants, alt, etc.)
  * @param variant - Optional size variant (sm, md, lg, xl, 2xl, hd, original)
+ * @param sizes - `sizes` attribute for the responsive srcset. Defaults to a
+ *   viewport-based fallback; pass the real layout width for best results.
  * @param rest - Additional Next.js Image props (alt, width, height, className, etc.)
  */
 export function BreaseImage({
@@ -53,26 +100,16 @@ export function BreaseImage({
 }: BreaseImageProps) {
   if (!breaseImage) return null;
 
-  const hasVariants =
-    breaseImage.variants && Object.keys(breaseImage.variants).length > 0;
-  const useResponsiveSrcSet = !variant && hasVariants;
+  const variants = breaseImage.variants
+    ? distinctVariants(breaseImage.variants)
+    : [];
+  const widest = variants[variants.length - 1];
+  const responsive = !variant && variants.length > 0;
 
   const src =
-    (variant && hasVariants && breaseImage.variants[variant]?.path) ||
-    breaseImage.path;
-
-  const variantList = hasVariants
-    ? VARIANT_ORDER.filter((key) => breaseImage.variants[key]).map(
-        (key) => breaseImage.variants[key],
-      )
-    : [];
-  const maxVariant =
-    variantList.length > 0
-      ? variantList.reduce((a, b) => (a.width >= b.width ? a : b))
-      : null;
-  const displayWidth = width ?? maxVariant?.width ?? breaseImage.width ?? 128;
-  const displayHeight =
-    height ?? maxVariant?.height ?? breaseImage.height ?? 128;
+    (variant && breaseImage.variants?.[variant]?.path) || breaseImage.path;
+  const displayWidth = width ?? widest?.width ?? breaseImage.width ?? 128;
+  const displayHeight = height ?? widest?.height ?? breaseImage.height ?? 128;
 
   return (
     <Image
@@ -81,11 +118,8 @@ export function BreaseImage({
       width={displayWidth}
       height={displayHeight}
       className={className}
-      {...(useResponsiveSrcSet && {
-        srcSet: buildSrcSetFromVariants(breaseImage.variants),
-        sizes: sizesProp ?? DEFAULT_SIZES,
-        unoptimized: true,
-      })}
+      sizes={sizesProp}
+      {...(responsive && variantProps(variants, sizesProp ?? DEFAULT_SIZES))}
       {...rest}
     />
   );

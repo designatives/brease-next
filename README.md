@@ -355,8 +355,9 @@ type BreaseResponse<T> =
   - Server component.
   - Injects `page.customCode` as raw HTML (e.g. analytics or tracking snippets).
 
-- **`<BreaseImage breaseImage>`**
-  - Renders optimized images based on Brease media variants.
+- **`<BreaseImage breaseImage sizes? variant?>`**
+  - Client component wrapping `next/image`. Without `variant`, the Brease variants (sm … hd, original) become a responsive `srcset`; pass `sizes` matching the layout (e.g. `"(max-width: 1024px) 100vw, 50vw"`) so the browser picks the smallest fitting file. With `variant`, that single file is rendered.
+  - Tip: set `images.deviceSizes: [480, 760, 1024, 1440, 1920, 2400]` in `next.config` so the generated `srcset` maps 1:1 onto the Brease variants.
 
 - **`<BreaseContext config slug getPage?>`**
   - Server component.
