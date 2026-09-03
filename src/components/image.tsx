@@ -13,8 +13,12 @@ const VARIANT_ORDER = [
   "original",
 ] as const;
 
-const DEFAULT_SIZES =
-  "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1440px) 33vw, 25vw";
+/**
+ * Fallback `sizes`: assume the image spans the viewport. It never picks a file
+ * narrower than the screen, so an image without `sizes` is never blurry; the
+ * cost is over-fetching on wide layouts, which a real `sizes` value removes.
+ */
+const DEFAULT_SIZES = "100vw";
 
 type BreaseImageProps = Omit<
   ImageProps,
@@ -84,8 +88,9 @@ function variantProps(
  *
  * @param breaseImage - Brease media object (path, variants, alt, etc.)
  * @param variant - Optional size variant (sm, md, lg, xl, 2xl, hd, original)
- * @param sizes - `sizes` attribute for the responsive srcset. Defaults to a
- *   viewport-based fallback; pass the real layout width for best results.
+ * @param sizes - `sizes` attribute for the responsive srcset. Defaults to
+ *   `100vw`; pass the real layout width (e.g. `"(max-width: 1024px) 100vw, 50vw"`)
+ *   so smaller files are picked on wide layouts.
  * @param rest - Additional Next.js Image props (alt, width, height, className, etc.)
  */
 export function BreaseImage({

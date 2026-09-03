@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `BreaseImage` is now a Client Component (required for the `loader` prop), so
   it can be rendered from Server Components as well.
 - `sizes` is forwarded when a `variant` is set instead of being dropped.
+- Without `sizes`, `BreaseImage` now falls back to `100vw`, so an image is
+  never served narrower than the viewport. Pass the real layout width to fetch
+  smaller files on wide layouts.
 
 ## [0.2.3] - 2026-06-09
 
