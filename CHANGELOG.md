@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2026-09-03
+
+### Fixed
+
+- `BreaseImage` now actually serves the responsive Brease variants. It used to
+  hand `next/image` a custom `srcSet` together with `unoptimized`, but
+  `next/image` discards a custom `srcSet` (and `unoptimized` drops `sizes`), so
+  every visitor downloaded the full-resolution original. The variants now reach
+  `next/image` through a `loader`, so the rendered `<img>` carries a real
+  `srcset`/`sizes` pair and `priority` preloads use `imagesrcset`.
+- `BreaseImage` is now a Client Component (required for the `loader` prop), so
+  it can be rendered from Server Components as well.
+- `sizes` is forwarded when a `variant` is set instead of being dropped.
+- Without `sizes`, `BreaseImage` now falls back to `100vw`, so an image is
+  never served narrower than the viewport. Pass the real layout width to fetch
+  smaller files on wide layouts.
+
 ## [0.2.3] - 2026-06-09
 
 ### Fixed
